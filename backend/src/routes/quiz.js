@@ -10,7 +10,8 @@ import {
   deactivateQuiz,
   getQuizByCode,
   generateQuestions,
-  getQuizStats
+  getQuizStats,
+  getActiveQuizzes
 } from '../controllers/quizController.js';
 import {
   saveGameResult,
@@ -22,6 +23,7 @@ import {
 const router = express.Router();
 
 // Публичные маршруты (для студентов)
+router.get('/active', getActiveQuizzes);
 router.get('/join/:code', getQuizByCode);
 router.post('/play/:code/result', saveGameResult);
 router.get('/play/:code/leaderboard', getLeaderboard);

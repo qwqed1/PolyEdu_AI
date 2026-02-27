@@ -118,6 +118,14 @@ const quizService = {
   },
 
   /**
+   * Получить все активные квизы (для студентов)
+   */
+  async getActiveQuizzes() {
+    const response = await axios.get(`${API_URL}/quiz/active`);
+    return response.data;
+  },
+
+  /**
    * Получить результаты квиза (для преподавателя)
    */
   async getQuizResults(id) {

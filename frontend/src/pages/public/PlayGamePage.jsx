@@ -101,19 +101,22 @@ const PlayGamePage = () => {
     const isCorrect = question?.answers[answerIndex]?.isCorrect || false;
     const timeSpent = (quiz?.settings?.timePerQuestion || 30) - timeLeft;
     
+    let newScore = score;
     // Начисляем очки (больше очков за быстрый ответ)
     if (isCorrect) {
       const basePoints = quiz?.settings?.pointsPerQuestion || 100;
       const timeBonus = Math.round((timeLeft / (quiz?.settings?.timePerQuestion || 30)) * basePoints);
-      setScore(prev => prev + timeBonus);
+      newScore = score + timeBonus;
+      setScore(newScore);
     }
 
-    setAnswers(prev => [...prev, {
+    const newAnswers = [...answers, {
       questionIndex: currentQuestionIndex,
       selected: answerIndex,
       correct: isCorrect,
       timeSpent
-    }]);
+    }];
+    setAnswers(newAnswers);
 
     setShowCorrect(true);
     setTimeout(() => nextQuestion(), 2000);

@@ -348,6 +348,41 @@ export const generateQuestions = async (req, res) => {
 };
 
 /**
+ * Получить все активные квизы (для студентов)
+ */
+export const getActiveQuizzes = async (req, res) => {
+  try {
+    const quizzes = await QuizModel.getActiveQuizzes();
+    
+    // Возвращаем данные без game_code (ученик должен ввести код сам)
+    const sanitized = quizzes.map(q => ({
+      id: q.id,
+      title: q.title,
+      description: q.description,
+      type: q.type,
+      questionsCount: parseInt(q.questions_count) || 0,
+      teacherName: q.teacher_name,
+      settings: {
+        timePerQuestion: q.settings?.timePerQuestion || 30,
+        pointsPerQuestion: q.settings?.pointsPerQuestion || 100
+      },
+      createdAt: q.created_at
+    }));
+
+    res.json({
+      success: true,
+      data: sanitized
+    });
+  } catch (error) {
+    console.error('Error getting active quizzes:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Ошибка при получении активных квизов'
+    });
+  }
+};
+
+/**
  * Получить статистику квизов
  */
 export const getQuizStats = async (req, res) => {

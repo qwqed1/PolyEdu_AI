@@ -1,5 +1,9 @@
 import { Link } from 'react-router-dom';
-import { Moon, Sun, LogOut, User, Menu, X, BookOpen, Share2, Bot, Calendar, Users, FileText, Gamepad2, BarChart3, Globe, ChevronDown, Shuffle } from 'lucide-react';
+import { 
+  Sun, Moon, Menu, X, User, LogOut, ChevronDown, BookOpen, 
+  GraduationCap, Award, Share2, Calendar, Globe, Gamepad2, 
+  BarChart3, Bot, Users, FileText, Shuffle
+} from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -112,6 +116,10 @@ export default function Header() {
                   <Link to="/exchange" className="text-neutral-700 dark:text-neutral-300 hover:text-primary-600 dark:hover:text-primary-400 transition-default font-medium flex items-center gap-1.5">
                     <Share2 className="w-4 h-4" />
                     {t.nav.exchange}
+                  </Link>
+                  <Link to="/games" className="text-neutral-700 dark:text-neutral-300 hover:text-primary-600 dark:hover:text-primary-400 transition-default font-medium flex items-center gap-1.5">
+                    <Gamepad2 className="w-4 h-4" />
+                    {t.nav.games || 'Игры'}
                   </Link>
                 </>
               )}
@@ -228,6 +236,10 @@ export default function Header() {
                     <Link to="/exchange" className="px-3 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-default flex items-center gap-2">
                       <Share2 className="w-4 h-4" />
                       {t.nav.exchangeMaterials}
+                    </Link>
+                    <Link to="/games" className="px-3 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-default flex items-center gap-2">
+                      <Gamepad2 className="w-4 h-4" />
+                      {t.nav.games || 'Игры'}
                     </Link>
                   </>
                 )}

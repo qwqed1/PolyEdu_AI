@@ -25,6 +25,8 @@ import CreateQuizPage from './pages/dashboard/CreateQuizPage';
 import QuizResultsPage from './pages/dashboard/QuizResultsPage';
 import GameGeneratorPage from './pages/dashboard/GameGeneratorPage';
 import GroupSplitterPage from './pages/dashboard/GroupSplitterPage';
+import StudentGamesPage from './pages/dashboard/StudentGamesPage';
+import TeacherLobbyPage from './pages/dashboard/TeacherLobbyPage';
 
 function RoleDashboardPage() {
   const { user } = useAuth();
@@ -85,6 +87,9 @@ function App() {
                       <Route path="/exchange" element={<PrivateRoute roles={['student']}><ExchangePage /></PrivateRoute>} />
                       <Route path="/schedule" element={<PrivateRoute><SchedulePage /></PrivateRoute>} />
 
+                      {/* Student routes */}
+                      <Route path="/games" element={<PrivateRoute roles={['student']}><StudentGamesPage /></PrivateRoute>} />
+
                       {/* Teacher routes */}
                       <Route path="/groups" element={<PrivateRoute roles={['teacher']}><GroupsPage /></PrivateRoute>} />
                       <Route path="/groups/:id" element={<PrivateRoute roles={['teacher']}><GroupDetailPage /></PrivateRoute>} />
@@ -95,6 +100,7 @@ function App() {
                       <Route path="/interactive-games/ai-generator" element={<PrivateRoute roles={['teacher']}><GameGeneratorPage /></PrivateRoute>} />
                       <Route path="/interactive-games/:id/edit" element={<PrivateRoute roles={['teacher']}><CreateQuizPage /></PrivateRoute>} />
                       <Route path="/interactive-games/:id/results" element={<PrivateRoute roles={['teacher']}><QuizResultsPage /></PrivateRoute>} />
+                      <Route path="/interactive-games/:id/lobby" element={<PrivateRoute roles={['teacher']}><TeacherLobbyPage /></PrivateRoute>} />
                       <Route path="/group-splitter" element={<PrivateRoute roles={['teacher']}><GroupSplitterPage /></PrivateRoute>} />
 
                       <Route path="/profile" element={<PrivateRoute><RoleDashboardPage /></PrivateRoute>} />

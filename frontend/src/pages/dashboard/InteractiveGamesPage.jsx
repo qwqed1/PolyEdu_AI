@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { 
   Gamepad2, Plus, Play, Pause, Trash2, Edit, Copy, 
   Users, HelpCircle, Sparkles, Clock, Award, BarChart3,
-  ListChecks, Wand2
+  ListChecks, Wand2, Monitor
 } from 'lucide-react';
 import quizService from '../../services/quizService';
 
@@ -40,7 +40,10 @@ export default function InteractiveGamesPage() {
     try {
       const result = await quizService.activateQuiz(id);
       if (result.success) {
-        loadData();
+        // After activation, navigate to lobby
+        navigate(`/interactive-games/${id}/lobby`, {
+          state: { quiz: result.data }
+        });
       }
     } catch (err) {
       console.error('Error activating quiz:', err);
@@ -282,13 +285,22 @@ export default function InteractiveGamesPage() {
                             {quiz.game_code}
                           </p>
                         </div>
-                        <button
-                          onClick={() => copyGameCode(quiz.game_code)}
-                          className="p-2 hover:bg-neutral-200 dark:hover:bg-dark-border rounded-lg transition-colors"
-                          title="Копировать код"
-                        >
-                          <Copy className="w-5 h-5 text-neutral-500" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => copyGameCode(quiz.game_code)}
+                            className="p-2 hover:bg-neutral-200 dark:hover:bg-dark-border rounded-lg transition-colors"
+                            title="Копировать код"
+                          >
+                            <Copy className="w-5 h-5 text-neutral-500" />
+                          </button>
+                          <button
+                            onClick={() => navigate(`/interactive-games/${quiz.id}/lobby`, { state: { quiz } })}
+                            className="p-2 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                            title="Открыть лобби"
+                          >
+                            <Monitor className="w-5 h-5 text-indigo-500" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -297,13 +309,22 @@ export default function InteractiveGamesPage() {
                   <div className="flex items-center justify-between pt-4 border-t border-neutral-200 dark:border-dark-border">
                     <div className="flex items-center gap-2">
                       {quiz.is_active ? (
-                        <button
-                          onClick={() => handleDeactivate(quiz.id)}
-                          className="p-2 text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
-                          title="Остановить игру"
-                        >
-                          <Pause className="w-5 h-5" />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleDeactivate(quiz.id)}
+                            className="p-2 text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
+                            title="Остановить игру"
+                          >
+                            <Pause className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => navigate(`/interactive-games/${quiz.id}/lobby`, { state: { quiz } })}
+                            className="p-2 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                            title="Открыть лобби"
+                          >
+                            <Monitor className="w-5 h-5" />
+                          </button>
+                        </>
                       ) : (
                         <button
                           onClick={() => handleActivate(quiz.id)}

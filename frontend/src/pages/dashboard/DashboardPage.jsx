@@ -1,7 +1,7 @@
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import Card from '../../components/common/Card';
-import { User, Building2, Mail, Bot, BookOpen, Share2, Calendar, GraduationCap } from 'lucide-react';
+import { User, Building2, Mail, Bot, BookOpen, Share2, Calendar, GraduationCap, Gamepad2 } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -85,6 +85,20 @@ export default function DashboardPage() {
                   <div>
                     <h3 className="font-bold text-neutral-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">Обмен</h3>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Делись с однокурсниками</p>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+
+            <Link to="/games">
+              <Card className="h-full hover:shadow-lg hover:border-emerald-200 dark:hover:border-emerald-500/30 transition-all cursor-pointer group">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Gamepad2 className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-neutral-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Игры</h3>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Викторины и тесты</p>
                   </div>
                 </div>
               </Card>

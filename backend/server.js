@@ -49,10 +49,10 @@ app.use('/api/schedule-upload', scheduleUploadRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'CollegeEduAI Backend is running' });
+  res.json({ status: 'OK', message: 'AIZERT Backend is running' });
 });
 
-// Initialize database tables and test connection
+// Initialize database tables and test connection (Только для локального запуска)
 const initDatabase = async () => {
   try {
     await pool.query('SELECT NOW()');
@@ -61,7 +61,6 @@ const initDatabase = async () => {
     await UserModel.ensureRoleColumn();
     console.log('✓ Users role column ensured');
     
-    // Инициализация таблиц
     await QuizModel.initTable();
     console.log('✓ Quizzes table initialized');
     
@@ -81,7 +80,12 @@ const initDatabase = async () => {
   }
 };
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  initDatabase();
-});
+// Если запускаем локально, поднимаем сервер. Vercel использует экспортированный app.
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    initDatabase();
+  });
+}
+
+export default app;

@@ -251,6 +251,24 @@ export const QuizModel = {
   },
 
   /**
+   * Получить все активные квизы (для студентов)
+   */
+  async getActiveQuizzes() {
+    const result = await pool.query(
+      `SELECT q.id, q.title, q.description, q.type, q.game_code,
+              jsonb_array_length(q.questions) as questions_count,
+              q.settings,
+              u.full_name as teacher_name,
+              q.created_at
+       FROM quizzes q
+       JOIN users u ON q.user_id = u.id
+       WHERE q.is_active = true AND q.game_code IS NOT NULL
+       ORDER BY q.created_at DESC`
+    );
+    return result.rows;
+  },
+
+  /**
    * Получить статистику квизов пользователя
    */
   async getStats(userId) {
