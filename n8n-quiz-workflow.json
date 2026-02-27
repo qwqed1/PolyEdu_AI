@@ -1,0 +1,250 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "wiki-tool-01",
+      "name": "Wikipedia Search",
+      "type": "@n8n/n8n-nodes-langchain.toolWikipedia",
+      "typeVersion": 1,
+      "position": [640, -144]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" },
+              { "name": "Access-Control-Allow-Origin", "value": "*" }
+            ]
+          }
+        }
+      },
+      "id": "dca155cb-3094-4f76-9327-737655d2e332",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [368, -384]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nlet message = '';\nif (input.output) {\n  message = input.output;\n} else if (input.text) {\n  message = input.text;\n} else {\n  message = JSON.stringify(input);\n}\n\nreturn {\n  json: {\n    success: true,\n    message: message\n  }\n};"
+      },
+      "id": "acb4e155-5374-4027-9106-26bdc560f699",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [144, -384]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://audibly-niveous-palma.ngrok-free.dev/api/ai-data/public/query",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"Content-Type\": \"application/json\",\n  \"ngrok-skip-browser-warning\": \"true\"\n}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"action\": \"get_students\",\n  \"userId\": 1,\n  \"groupName\": \"{{ $fromAI('groupName', 'Название группы, например ИС23-3В') }}\"\n}"
+      },
+      "id": "2a39a9b5-8e03-4373-aff1-c0e8165c7df7",
+      "name": "Get Students Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [464, -144]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://audibly-niveous-palma.ngrok-free.dev/api/ai-data/public/query",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"Content-Type\": \"application/json\",\n  \"ngrok-skip-browser-warning\": \"true\"\n}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"action\": \"get_stats\",\n  \"userId\": 1,\n  \"groupName\": \"{{ $fromAI('groupName', 'Название группы, например ИС23-3В') }}\"\n}"
+      },
+      "id": "2174a68a-290e-4834-a1d9-3f961288f623",
+      "name": "Get Stats Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [272, -144]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://audibly-niveous-palma.ngrok-free.dev/api/ai-data/public/query",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"Content-Type\": \"application/json\",\n  \"ngrok-skip-browser-warning\": \"true\"\n}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"action\": \"get_groups\",\n  \"userId\": 1\n}"
+      },
+      "id": "9b9cbab9-dfa9-4bc9-a049-93e6a67a7aa2",
+      "name": "Get Groups Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [64, -144]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "8040ee33-4aa5-408f-a194-2180b2f98080",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [-80, -144],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "wm7xglXqPKxHlr0f",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Ты - AIZERT, умный и универсальный помощник для преподавателей колледжа CollegeEduAI. Отвечай на русском языке.\n\n## ДОСТУПНЫЕ ИНСТРУМЕНТЫ:\n\n### Данные преподавателя:\n- get_groups - список групп\n- get_group_stats(groupName) - статистика группы\n- get_students(groupName) - студенты группы\n\n### ПОИСК ИНФОРМАЦИИ:\n- Wikipedia Search - поиск информации в Wikipedia\n\n---\n\n## 🎮 ГЕНЕРАЦИЯ ВОПРОСОВ ДЛЯ ИНТЕРАКТИВНЫХ ИГР (Kahoot/Quizizz)\n\nКогда в сообщении есть контекст 'quiz_generation' или просят сгенерировать вопросы для теста/игры/квиза:\n\n### ОБЯЗАТЕЛЬНЫЙ ФОРМАТ ОТВЕТА - ТОЛЬКО JSON!\n\nВозвращай ТОЛЬКО JSON массив без дополнительного текста:\n\n```json\n[\n  {\n    \"question\": \"Текст вопроса?\",\n    \"answers\": [\n      {\"text\": \"Правильный ответ\", \"isCorrect\": true},\n      {\"text\": \"Неправильный ответ 1\", \"isCorrect\": false},\n      {\"text\": \"Неправильный ответ 2\", \"isCorrect\": false},\n      {\"text\": \"Неправильный ответ 3\", \"isCorrect\": false}\n    ],\n    \"explanation\": \"Краткое объяснение правильного ответа\"\n  }\n]\n```\n\n### ПРАВИЛА ГЕНЕРАЦИИ ВОПРОСОВ:\n1. Генерируй указанное количество вопросов (по умолчанию 5)\n2. Каждый вопрос должен иметь 4 варианта ответа\n3. Только ОДИН ответ правильный (isCorrect: true)\n4. Вопросы должны быть разнообразными и интересными\n5. Уровень сложности: легкий/средний/сложный - учитывай если указано\n6. Добавляй краткое объяснение для каждого вопроса\n7. ВАЖНО: Возвращай ТОЛЬКО JSON массив, без markdown, без ```json, без пояснений!\n\n### ПРИМЕР ЗАПРОСА:\n\"Сгенерируй 5 вопросов для интерактивного теста на тему 'История Казахстана: Независимость'\"\n\n### ПРИМЕР ОТВЕТА:\n[{\"question\":\"В каком году Казахстан объявил независимость?\",\"answers\":[{\"text\":\"1991\",\"isCorrect\":true},{\"text\":\"1990\",\"isCorrect\":false},{\"text\":\"1992\",\"isCorrect\":false},{\"text\":\"1989\",\"isCorrect\":false}],\"explanation\":\"16 декабря 1991 года Казахстан объявил государственную независимость\"}]\n\n---\n\n## 📚 ГЕНЕРАЦИЯ ПЛАНОВ УРОКОВ\n\nКогда просят создать план урока:\n1. Используй Wikipedia Search для поиска информации по теме\n2. Составь подробный план по казахстанскому стандарту\n\n### Структура (Almaty Polytechnic College):\n\n**Шапка**: Модуль/Пән, Тема, Педагог, Дата, Курс, Топ, Тип урока, Цели, Задачи, Результаты, Ресурсы\n\n**Сабақтың барысы (7 этапов)**:\n1. Ұйымдастыру кезеңі (5 мин.)\n2. Білімді өзектендіру (15 мин.)\n3. Жаңа білім мен дағдыларды қалыптастыру (40 мин.)\n4. Өтілген тақырыпты бекіту (15 мин.)\n5. Бағалау (5 мин.)\n6. Үй тапсырмасы (3 мин.)\n7. Рефлексия (7 мин.)\n\n### Формат JSON для планов:\n```json\n[{\"lesson_number\": 1, \"topic\": \"Тема\", \"lesson_type\": \"Тип\", \"goals\": \"Цели\", \"objectives\": \"Задачи\", \"expected_results\": \"Результаты\", \"resources_methods\": \"Ресурсы\", \"resources_technical\": \"Техника\", \"stage_organization\": \"...\", \"stage_knowledge\": \"...\", \"stage_new_skills\": \"...\", \"stage_consolidation\": \"...\", \"stage_assessment\": \"...\", \"stage_homework\": \"...\", \"stage_reflection\": \"...\"}]\n```\n\nБудь креативным и полезным!"
+        }
+      },
+      "id": "809bdd7b-f231-446b-a9b7-1f86a99d3fa0",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [-80, -384]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst message = body.message || '';\nconst userId = body.userId || body.user_id || 1;\n\nreturn {\n  json: {\n    chatInput: message,\n    userId: userId\n  }\n};"
+      },
+      "id": "573ebf1b-6f33-4b58-8517-7c480e075a5e",
+      "name": "Prepare Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-304, -384]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "polyedu-ai",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "174c44ff-7bbe-4450-92be-719201c13cfd",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-496, -368],
+      "webhookId": "51b90112-4d04-4388-9e27-f5bc9dfb35af"
+    }
+  ],
+  "connections": {
+    "Wikipedia Search": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Students Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Stats Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Groups Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2fa1ebf433b97254625c8b231594c7d672225204a336e492a5294bd8c6d6193f"
+  }
+}

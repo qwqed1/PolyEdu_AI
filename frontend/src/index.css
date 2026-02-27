@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: Inter, system-ui, -apple-system, sans-serif;
+    @apply bg-white text-neutral-900;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  .dark body {
+    @apply bg-dark-bg text-white;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    line-height: 1.2;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-xl p-6 shadow-sm border border-neutral-200;
+  }
+
+  .dark .card {
+    @apply bg-dark-surface border-dark-border shadow-md;
+  }
+
+  .gradient-primary {
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+  }
+
+  .gradient-text-primary {
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glass-effect {
+    @apply bg-white/85 backdrop-blur-xl border border-white/30;
+  }
+
+  .dark .glass-effect {
+    @apply bg-dark-surface/85 border-dark-border/30;
+  }
+
+  .transition-default {
+    @apply transition-all duration-200 ease-in-out;
+  }
+}

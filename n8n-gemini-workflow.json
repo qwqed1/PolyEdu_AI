@@ -1,0 +1,175 @@
+{
+  "name": "CollegeEduAI - Gemini",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "polyedu-ai",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst message = body.message || '';\nconst userId = body.userId || body.user_id || 1;\n\nreturn {\n  json: {\n    chatInput: message,\n    userId: userId\n  }\n};"
+      },
+      "id": "prepare",
+      "name": "Prepare Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 400]
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Ты - AIZERT, умный помощник для преподавателей.\\n\\nОтвечай на русском языке.\\n\\nУ тебя есть инструменты:\\n- get_groups: получить список групп\\n- get_group_stats: статистика группы (параметр groupName)\\n- get_students: студенты группы (параметр groupName)\\n\\nИспользуй инструменты когда спрашивают про группы, студентов или оценки.\\nДля обычных вопросов отвечай сам."
+        }
+      },
+      "id": "agent",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [620, 400]
+    },
+    {
+      "parameters": {
+        "model": "gemini-2.0-flash",
+        "options": {}
+      },
+      "id": "gemini",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [620, 620],
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "GEMINI_CREDENTIAL_ID",
+          "name": "Google Gemini"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "get_groups",
+        "description": "Получить список всех групп преподавателя. Используй когда пользователь спрашивает про свои группы.",
+        "method": "POST",
+        "url": "https://audibly-niveous-palma.ngrok-free.dev/api/ai-data/public/query",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"Content-Type\": \"application/json\",\n  \"ngrok-skip-browser-warning\": \"true\"\n}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"action\": \"get_groups\",\n  \"userId\": 1\n}"
+      },
+      "id": "tool-groups",
+      "name": "Get Groups Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [820, 580]
+    },
+    {
+      "parameters": {
+        "name": "get_group_stats",
+        "description": "Получить статистику группы: средний балл, количество студентов. Параметр: groupName - название группы (например ИТ-301).",
+        "method": "POST",
+        "url": "=https://audibly-niveous-palma.ngrok-free.dev/api/ai-data/public/query",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"Content-Type\": \"application/json\",\n  \"ngrok-skip-browser-warning\": \"true\"\n}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"action\": \"get_stats\",\n  \"userId\": 1,\n  \"groupName\": \"{{ $fromAI('groupName') }}\"\n}"
+      },
+      "id": "tool-stats",
+      "name": "Get Stats Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1020, 580]
+    },
+    {
+      "parameters": {
+        "name": "get_students",
+        "description": "Получить список студентов группы. Параметр: groupName - название группы.",
+        "method": "POST",
+        "url": "=https://audibly-niveous-palma.ngrok-free.dev/api/ai-data/public/query",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"Content-Type\": \"application/json\",\n  \"ngrok-skip-browser-warning\": \"true\"\n}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"action\": \"get_students\",\n  \"userId\": 1,\n  \"groupName\": \"{{ $fromAI('groupName') }}\"\n}"
+      },
+      "id": "tool-students",
+      "name": "Get Students Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1220, 580]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nlet message = '';\nif (input.output) {\n  message = input.output;\n} else if (input.text) {\n  message = input.text;\n} else {\n  message = JSON.stringify(input);\n}\n\nreturn {\n  json: {\n    success: true,\n    message: message\n  }\n};"
+      },
+      "id": "format",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "response",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1060, 400]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{"node": "Prepare Input", "type": "main", "index": 0}]]
+    },
+    "Prepare Input": {
+      "main": [[{"node": "AI Agent", "type": "main", "index": 0}]]
+    },
+    "AI Agent": {
+      "main": [[{"node": "Format Response", "type": "main", "index": 0}]]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [[{"node": "AI Agent", "type": "ai_languageModel", "index": 0}]]
+    },
+    "Get Groups Tool": {
+      "ai_tool": [[{"node": "AI Agent", "type": "ai_tool", "index": 0}]]
+    },
+    "Get Stats Tool": {
+      "ai_tool": [[{"node": "AI Agent", "type": "ai_tool", "index": 0}]]
+    },
+    "Get Students Tool": {
+      "ai_tool": [[{"node": "AI Agent", "type": "ai_tool", "index": 0}]]
+    },
+    "Format Response": {
+      "main": [[{"node": "Response", "type": "main", "index": 0}]]
+    }
+  }
+}
