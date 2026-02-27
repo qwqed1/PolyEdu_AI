@@ -1,11 +1,13 @@
 import express from 'express';
 import { subjectController } from '../controllers/subjectController.js';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.get('/', authMiddleware, subjectController.getAll);
-router.post('/', authMiddleware, subjectController.create);
-router.delete('/:id', authMiddleware, subjectController.delete);
+router.use(authMiddleware, requireRole('teacher'));
+
+router.get('/', subjectController.getAll);
+router.post('/', subjectController.create);
+router.delete('/:id', subjectController.delete);
 
 export default router;

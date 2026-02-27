@@ -70,6 +70,56 @@ export const studentController = {
   },
 
   /**
+   * Массовое создание студентов
+   * POST /api/students/bulk
+   */
+  async bulkCreate(req, res) {
+    try {
+      const { names, groupId } = req.body;
+      
+      if (!Array.isArray(names) || names.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Список имён обязателен'
+        });
+      }
+      
+      if (!groupId) {
+        return res.status(400).json({
+          success: false,
+          error: 'ID группы обязателен'
+        });
+      }
+
+      // Filter out empty names and trim
+      const cleanNames = names
+        .map(n => n.trim())
+        .filter(n => n.length > 0);
+
+      if (cleanNames.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Нет валидных имён для добавления'
+        });
+      }
+
+      const students = await StudentModel.bulkCreate(cleanNames, groupId);
+      
+      res.status(201).json({
+        success: true,
+        data: students,
+        message: `Успешно добавлено ${students.length} студентов`
+      });
+    } catch (error) {
+      console.error('[Student Controller] Error bulk creating students:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Ошибка при массовом добавлении студентов'
+      });
+    }
+  },
+
+  /**
    * Удалить студента
    * DELETE /api/students/:id
    */

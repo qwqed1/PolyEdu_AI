@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NOT NULL,
   institution VARCHAR(255),
   position VARCHAR(255),
+  role VARCHAR(20) NOT NULL DEFAULT 'teacher',
   avatar_url TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()

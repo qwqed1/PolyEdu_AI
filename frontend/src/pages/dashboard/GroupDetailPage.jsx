@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Users, Plus, Trash2, Star, X, BookOpen, ChevronDown, ChevronRight, Layers, FileText } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trash2, Star, X, BookOpen, ChevronDown, ChevronRight, Layers, FileText, ClipboardList } from 'lucide-react';
 import groupService from '../../services/groupService';
 import studentService from '../../services/studentService';
 import gradeService from '../../services/gradeService';
@@ -22,6 +22,9 @@ export default function GroupDetailPage() {
   const [showGradeHistory, setShowGradeHistory] = useState(false);
   const [showAddModule, setShowAddModule] = useState(false);
   const [showAddModuleSubject, setShowAddModuleSubject] = useState(false);
+  const [showBulkAdd, setShowBulkAdd] = useState(false);
+  const [bulkStudentText, setBulkStudentText] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
   
   // Modules state
   const [modules, setModules] = useState([]);
@@ -78,6 +81,33 @@ export default function GroupDetailPage() {
       await loadData();
     } catch (err) {
       alert(err.message);
+    }
+  };
+
+  const handleBulkAddStudents = async (e) => {
+    e.preventDefault();
+    if (!bulkStudentText.trim()) return;
+    setBulkLoading(true);
+    try {
+      // Parse text: split by newlines, remove numbering like "1. " or "1 "
+      const names = bulkStudentText
+        .split('\n')
+        .map(line => line.replace(/^\s*\d+[.\)\s]+/, '').trim())
+        .filter(name => name.length > 0);
+
+      if (names.length === 0) {
+        alert('Не удалось распознать имена. Введите по одному имени на строку.');
+        return;
+      }
+
+      await studentService.bulkCreate(names, id);
+      setBulkStudentText('');
+      setShowBulkAdd(false);
+      await loadData();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setBulkLoading(false);
     }
   };
 
@@ -263,6 +293,13 @@ export default function GroupDetailPage() {
             >
               <BookOpen className="w-5 h-5" />
               Добавить предмет
+            </button>
+            <button
+              onClick={() => setShowBulkAdd(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition"
+            >
+              <ClipboardList className="w-5 h-5" />
+              Добавить список
             </button>
             <button
               onClick={() => setShowAddStudent(true)}
@@ -805,6 +842,50 @@ export default function GroupDetailPage() {
             </div>
           </div>
         )}
+        {/* Bulk Add Students Modal */}
+        {showBulkAdd && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowBulkAdd(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-lg w-full mx-4" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Добавить список студентов</h2>
+                <button onClick={() => setShowBulkAdd(false)} className="text-gray-500 hover:text-gray-700">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                Вставьте список студентов — по одному имени на строку. Нумерация будет удалена автоматически.
+              </p>
+              <form onSubmit={handleBulkAddStudents}>
+                <textarea
+                  value={bulkStudentText}
+                  onChange={(e) => setBulkStudentText(e.target.value)}
+                  placeholder={`1 Абдрасул Диана\n2 Алтымбек Аружан\n3 Елгелдиева Айнур\n...`}
+                  className="w-full px-4 py-3 border dark:border-gray-600 rounded-lg mb-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm resize-none"
+                  rows={12}
+                  required
+                />
+                <div className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+                  {bulkStudentText.trim()
+                    ? `Распознано имён: ${bulkStudentText.split('\n').map(l => l.replace(/^\s*\d+[.\)\s]+/, '').trim()).filter(n => n.length > 0).length}`
+                    : 'Введите список студентов'}
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setShowBulkAdd(false)} className="flex-1 px-4 py-2 border dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300">
+                    Отмена
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={bulkLoading}
+                    className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    {bulkLoading ? 'Добавление...' : 'Добавить всех'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

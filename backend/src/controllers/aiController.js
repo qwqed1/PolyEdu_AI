@@ -37,14 +37,14 @@ class AIController {
       console.log(`[AI Controller] Получен запрос от пользователя ${userId}`);
       console.log(`[AI Controller] Сообщение: "${message.substring(0, 50)}..."`);
 
-      // Отправка в n8n
+      // Отправка в Gemini Agent
       const result = await aiService.sendMessage(
         message.trim(),
         userId,
         context || ''
       );
 
-      console.log(`[AI Controller] Ответ от n8n получен успешно`);
+      console.log(`[AI Controller] Ответ от Gemini Agent получен успешно`);
 
       res.json({
         success: true,
@@ -74,7 +74,7 @@ class AIController {
       res.json({
         success: true,
         status: isHealthy ? 'healthy' : 'unhealthy',
-        webhookUrl: process.env.N8N_WEBHOOK_URL
+        engine: 'gemini-agent'
       });
     } catch (error) {
       res.status(500).json({

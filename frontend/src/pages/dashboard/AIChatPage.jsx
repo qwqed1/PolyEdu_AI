@@ -1,15 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
-import { Bot, Send, User, Loader2, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Bot, Send, User, Loader2, AlertCircle, Mic, MicOff } from 'lucide-react';
 import aiService from '../../services/aiService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function AIChatPage() {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
   const messagesEndRef = useRef(null);
+  const recognitionRef = useRef(null);
   const { user } = useAuth();
+  const { language, t } = useLanguage();
 
   // Автоматическая прокрутка к последнему сообщению
   const scrollToBottom = () => {
@@ -20,22 +25,98 @@ export default function AIChatPage() {
     scrollToBottom();
   }, [messages]);
 
+  // Инициализация Web Speech API
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setVoiceSupported(true);
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+        
+        if (finalTranscript) {
+          setInputMessage(prev => prev + finalTranscript);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) { /* ignore */ }
+      }
+    };
+  }, []);
+
+  // Обновляем язык распознавания при смене языка
+  useEffect(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.lang = language === 'kk' ? 'kk-KZ' : 'ru-RU';
+    }
+  }, [language]);
+
+  const toggleVoiceInput = useCallback(() => {
+    if (!recognitionRef.current) return;
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current.lang = language === 'kk' ? 'kk-KZ' : 'ru-RU';
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (e) {
+        console.error('Failed to start recognition:', e);
+      }
+    }
+  }, [isListening, language]);
+
   // Приветственное сообщение
   useEffect(() => {
     setMessages([
       {
         id: 1,
         type: 'ai',
-        content: `Здравствуйте${user?.name ? ', ' + user.name : ''}! Я AIZERT, ваш AI-помощник. Чем могу помочь сегодня?`,
+        content: t.aiChat.greeting(user?.name),
         timestamp: new Date()
       }
     ]);
-  }, [user]);
+  }, [user, t]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
     
     if (!inputMessage.trim() || isLoading) return;
+
+    // Останавливаем голосовой ввод при отправке
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
 
     const userMessage = {
       id: Date.now(),
@@ -87,7 +168,7 @@ export default function AIChatPage() {
           console.log('✓ Using stringified response.data');
         }
       } else {
-        aiResponseText = 'Получен ответ от AI агента, но данные отсутствуют';
+        aiResponseText = t.aiChat.noData;
         console.log('✗ No response.data');
       }
       
@@ -96,7 +177,7 @@ export default function AIChatPage() {
       
       // Проверяем, что текст не пустой
       if (!aiResponseText || aiResponseText.trim() === '') {
-        aiResponseText = 'AI вернул пустой ответ. Попробуйте переформулировать вопрос.';
+        aiResponseText = t.aiChat.emptyResponse;
       }
       
       // Добавляем ответ AI
@@ -116,7 +197,7 @@ export default function AIChatPage() {
       const errorMessage = {
         id: Date.now() + 1,
         type: 'error',
-        content: `Извините, произошла ошибка: ${error.message}`,
+        content: `${t.aiChat.errorPrefix} ${error.message}`,
         timestamp: new Date()
       };
 
@@ -135,8 +216,8 @@ export default function AIChatPage() {
             <Bot className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">AIZERT</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Твой ИИ-помощник для учёбы</p>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">{t.aiChat.title}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t.aiChat.subtitle}</p>
           </div>
         </div>
       </div>
@@ -213,6 +294,21 @@ export default function AIChatPage() {
         </div>
       </div>
 
+      {/* Voice listening indicator */}
+      {isListening && (
+        <div className="bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800 px-4 py-2">
+          <div className="max-w-4xl mx-auto flex items-center gap-2">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            </span>
+            <span className="text-sm text-red-600 dark:text-red-400 font-medium">
+              {t.aiChat.voiceListening}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Input Form */}
       <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
         <div className="max-w-4xl mx-auto">
@@ -221,11 +317,29 @@ export default function AIChatPage() {
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              placeholder="Введите ваш вопрос..."
+              placeholder={t.aiChat.placeholder}
               disabled={isLoading}
               className="flex-1 px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
               maxLength={2000}
             />
+
+            {/* Voice input button */}
+            {voiceSupported && (
+              <button
+                type="button"
+                onClick={toggleVoiceInput}
+                disabled={isLoading}
+                title={isListening ? t.aiChat.voiceStop : t.aiChat.voiceStart}
+                className={`px-4 py-3 rounded-lg font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isListening
+                    ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-500 animate-pulse'
+                    : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 focus:ring-gray-400'
+                }`}
+              >
+                {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              </button>
+            )}
+
             <button
               type="submit"
               disabled={!inputMessage.trim() || isLoading}
@@ -235,7 +349,7 @@ export default function AIChatPage() {
             </button>
           </form>
           <p className="text-xs text-gray-500 mt-2">
-            {inputMessage.length}/2000 символов
+            {t.aiChat.charCount(inputMessage.length, 2000)}
           </p>
         </div>
       </div>

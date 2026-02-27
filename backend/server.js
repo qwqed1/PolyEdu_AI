@@ -13,11 +13,14 @@ import lessonPlansRoutes from './src/routes/lessonPlans.js';
 import quizRoutes from './src/routes/quiz.js';
 import moduleRoutes from './src/routes/modules.js';
 import aiGameRoutes from './src/routes/aiGames.js';
+import scheduleUploadRoutes from './src/routes/scheduleUpload.js';
 import pool from './src/config/db.js';
 import { QuizModel } from './src/models/Quiz.js';
 import { GameResultModel } from './src/models/GameResult.js';
 import { ModuleModel } from './src/models/modules.js';
 import { AIGameModel } from './src/models/aiGames.js';
+import { UserModel } from './src/models/User.js';
+import { ScheduleUploadModel } from './src/models/ScheduleUpload.js';
 
 dotenv.config();
 
@@ -42,6 +45,7 @@ app.use('/api/lesson-plans', lessonPlansRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api', moduleRoutes);
 app.use('/api/ai-games', aiGameRoutes);
+app.use('/api/schedule-upload', scheduleUploadRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -53,6 +57,9 @@ const initDatabase = async () => {
   try {
     await pool.query('SELECT NOW()');
     console.log('✓ Database connected');
+
+    await UserModel.ensureRoleColumn();
+    console.log('✓ Users role column ensured');
     
     // Инициализация таблиц
     await QuizModel.initTable();
@@ -66,6 +73,9 @@ const initDatabase = async () => {
     
     await AIGameModel.initTable();
     console.log('✓ AI Games table initialized');
+    
+    await ScheduleUploadModel.initTable();
+    console.log('✓ Schedule uploads table initialized');
   } catch (err) {
     console.error('❌ Database initialization error:', err);
   }

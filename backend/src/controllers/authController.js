@@ -8,7 +8,20 @@ dotenv.config();
 export const authController = {
   async register(req, res) {
     try {
-      const { full_name, email, password, institution, position } = req.body;
+      const { full_name, email, password, institution, position, role } = req.body;
+
+      const normalizedRole = role === 'student' ? 'student' : role === 'teacher' ? 'teacher' : null;
+      if (!normalizedRole) {
+        return res.status(400).json({ message: 'Invalid role. Use student or teacher.' });
+      }
+
+      if (normalizedRole === 'student' && !position) {
+        return res.status(400).json({ message: 'Student group is required' });
+      }
+
+      if (normalizedRole === 'teacher' && !position) {
+        return res.status(400).json({ message: 'Teacher position is required' });
+      }
 
       // Check if user exists
       const existingUser = await UserModel.findByEmail(email);
@@ -26,6 +39,7 @@ export const authController = {
         password_hash,
         institution,
         position,
+        role: normalizedRole,
       });
 
       res.status(201).json({
@@ -40,7 +54,12 @@ export const authController = {
 
   async login(req, res) {
     try {
-      const { email, password } = req.body;
+      const { email, password, role } = req.body;
+
+      const normalizedRole = role === 'student' ? 'student' : role === 'teacher' ? 'teacher' : null;
+      if (!normalizedRole) {
+        return res.status(400).json({ message: 'Invalid role. Use student or teacher.' });
+      }
 
       // Find user
       const user = await UserModel.findByEmail(email);
@@ -54,9 +73,13 @@ export const authController = {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
 
+      if (user.role !== normalizedRole) {
+        return res.status(401).json({ message: 'Вы выбрали неверную роль для этого аккаунта' });
+      }
+
       // Generate token
       const token = jwt.sign(
-        { id: user.id },
+        { id: user.id, role: user.role || 'teacher' },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN }
       );

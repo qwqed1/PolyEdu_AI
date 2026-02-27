@@ -1,439 +1,430 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, X, Clock, Calendar as CalendarIcon, Plus } from 'lucide-react';
+import { Upload, ChevronDown, Clock, MapPin, User, BookOpen, Search, Trash2, FileText, X, Check, Loader2 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import scheduleUploadService from '../../services/scheduleUploadService';
+
+const SAVED_GROUP_KEY = 'polyedu_selected_group';
 
 export default function SchedulePage() {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState('month'); // 'month', 'week', 'day'
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  
-  // Event State
-  const [events, setEvents] = useState([
-    // Initial mock data
-    { id: 1, title: 'Встреча с командой', date: new Date(), type: 'work', time: '10:00', duration: 60 },
-    { id: 2, title: 'Лекция по React', date: new Date(new Date().setDate(new Date().getDate() + 2)), type: 'study', time: '14:00', duration: 90 }
-  ]);
-  
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title: '', time: '09:00', type: 'study', duration: 60 });
+  const { user } = useAuth();
+  const isTeacher = user?.role === 'teacher';
 
-  // Helpers
-  const formatMonth = (date) => date.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
-  const isSameDay = (d1, d2) => d1.toDateString() === d2.toDateString();
-  
-  // Hours for timeline (06:00 to 23:00)
-  const HOURS = Array.from({ length: 18 }, (_, i) => i + 6);
+  // State
+  const [groups, setGroups] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState(() => localStorage.getItem(SAVED_GROUP_KEY) || '');
+  const [scheduleData, setScheduleData] = useState({ uploads: [], entries: [] });
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [groupsLoading, setGroupsLoading] = useState(true);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showGroupDropdown, setShowGroupDropdown] = useState(false);
+  const [groupSearch, setGroupSearch] = useState('');
+  const [uploadResult, setUploadResult] = useState(null);
+  const [error, setError] = useState('');
 
-  // Navigation
-  const navigate = (direction) => {
-    const newDate = new Date(currentDate);
-    if (view === 'month') newDate.setMonth(currentDate.getMonth() + direction);
-    else if (view === 'week') newDate.setDate(currentDate.getDate() + (direction * 7));
-    else newDate.setDate(currentDate.getDate() + direction);
-    setCurrentDate(newDate);
-  };
+  const fileInputRef = useRef(null);
+  const dropdownRef = useRef(null);
 
-  const goToToday = () => {
-    const today = new Date();
-    setCurrentDate(today);
-    setSelectedDate(today);
-  };
+  // Load groups on mount
+  useEffect(() => {
+    loadGroups();
+  }, []);
 
-  // Event Handlers
-  const handleDayClick = (date) => {
-    setSelectedDate(date);
-    setNewEvent(prev => ({ ...prev, date: date, time: '09:00' }));
-    setIsModalOpen(true);
-  };
+  // Load schedule when group changes
+  useEffect(() => {
+    if (selectedGroup) {
+      localStorage.setItem(SAVED_GROUP_KEY, selectedGroup);
+      loadSchedule(selectedGroup);
+    } else {
+      setScheduleData({ uploads: [], entries: [] });
+      setLoading(false);
+    }
+  }, [selectedGroup]);
 
-  const handleTimeSlotClick = (date, hour) => {
-    const timeString = `${hour.toString().padStart(2, '0')}:00`;
-    setSelectedDate(date);
-    setNewEvent(prev => ({ ...prev, date: date, time: timeString }));
-    setIsModalOpen(true);
-  };
-
-  const saveEvent = () => {
-    if (!newEvent.title) return;
-    setEvents([...events, { ...newEvent, id: Date.now(), date: newEvent.date || selectedDate }]);
-    setIsModalOpen(false);
-    setNewEvent({ title: '', time: '09:00', type: 'study', duration: 60 });
-  };
-
-  // --- Views ---
-
-  const MonthView = () => {
-    const getDaysInMonth = (date) => {
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      const days = new Date(year, month + 1, 0).getDate();
-      const firstDay = new Date(year, month, 1).getDay();
-      const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
-      const daysArray = [];
-
-      // Prev month
-      const prevMonthDays = new Date(year, month, 0).getDate();
-      for (let i = 0; i < adjustedFirstDay; i++) {
-        daysArray.push({ day: prevMonthDays - adjustedFirstDay + 1 + i, type: 'prev', date: new Date(year, month - 1, prevMonthDays - adjustedFirstDay + 1 + i) });
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowGroupDropdown(false);
       }
-      // Current month
-      for (let i = 1; i <= days; i++) {
-        daysArray.push({ day: i, type: 'current', date: new Date(year, month, i) });
-      }
-      // Next month (fill to 42)
-      const remaining = 42 - daysArray.length;
-      for (let i = 1; i <= remaining; i++) {
-        daysArray.push({ day: i, type: 'next', date: new Date(year, month + 1, i) });
-      }
-      return daysArray;
     };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
-    const days = getDaysInMonth(currentDate);
-    const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const loadGroups = async () => {
+    try {
+      setGroupsLoading(true);
+      const data = await scheduleUploadService.getGroups();
+      setGroups(data);
+    } catch (err) {
+      console.error('Failed to load groups:', err);
+      setGroups([]);
+    } finally {
+      setGroupsLoading(false);
+    }
+  };
 
-    return (
-      <div className="flex flex-col h-full">
-        <div className="grid grid-cols-7 mb-2 shrink-0">
-          {weekDays.map(day => (
-            <div key={day} className="text-center text-neutral-500 dark:text-neutral-400 font-medium py-2">
-              {day}
+  const loadSchedule = async (group) => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await scheduleUploadService.getByGroup(group);
+      setScheduleData(data);
+    } catch (err) {
+      console.error('Failed to load schedule:', err);
+      setError('Расписание не найдено для этой группы');
+      setScheduleData({ uploads: [], entries: [] });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploading(true);
+      setError('');
+      const result = await scheduleUploadService.upload(file);
+      setUploadResult(result);
+      setShowUploadModal(true);
+      // Refresh groups
+      await loadGroups();
+      // If schedule is currently loaded, refresh it
+      if (selectedGroup) {
+        await loadSchedule(selectedGroup);
+      }
+    } catch (err) {
+      console.error('Upload failed:', err);
+      setError(err.response?.data?.error || 'Ошибка при загрузке файла');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const selectGroup = (group) => {
+    setSelectedGroup(group);
+    setShowGroupDropdown(false);
+    setGroupSearch('');
+  };
+
+  const filteredGroups = groups.filter(g =>
+    g.toLowerCase().includes(groupSearch.toLowerCase())
+  );
+
+  // Group entries by shift/upload
+  const groupedByShift = {};
+  scheduleData.entries.forEach(entry => {
+    const key = `${entry.shift || 'Смена'} — ${entry.week_type || ''}`;
+    if (!groupedByShift[key]) groupedByShift[key] = [];
+    groupedByShift[key].push(entry);
+  });
+
+  // Sort entries within each shift by lesson number
+  Object.keys(groupedByShift).forEach(key => {
+    groupedByShift[key].sort((a, b) => a.lesson_number - b.lesson_number);
+  });
+
+  return (
+    <div className="min-h-[calc(100vh-64px)] bg-neutral-50 dark:bg-dark-bg">
+      {/* Upload Result Modal */}
+      {showUploadModal && uploadResult && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
+          <div className="bg-white dark:bg-dark-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in duration-200">
+            <div className="p-5 border-b border-neutral-100 dark:border-dark-border flex justify-between items-center bg-emerald-50 dark:bg-emerald-900/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center">
+                  <Check className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="font-bold text-lg text-neutral-800 dark:text-neutral-100">Расписание загружено!</h3>
+              </div>
+              <button onClick={() => setShowUploadModal(false)} className="p-1 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors">
+                <X className="w-5 h-5 text-neutral-500" />
+              </button>
             </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 grid-rows-6 flex-1 gap-1 min-h-0">
-          {days.map((dayObj, idx) => {
-            const isToday = isSameDay(new Date(), dayObj.date);
-            const isSelected = isSameDay(selectedDate, dayObj.date);
-            const dayEvents = events.filter(e => isSameDay(e.date, dayObj.date));
-
-            return (
-              <div
-                key={idx}
-                onClick={() => handleDayClick(dayObj.date)}
-                className={`
-                  p-1 md:p-2 rounded-lg transition-all relative flex flex-col items-start justify-start cursor-pointer overflow-hidden
-                  ${dayObj.type === 'current' 
-                    ? 'bg-white dark:bg-dark-surface hover:shadow-md border border-transparent hover:border-primary-200 dark:hover:border-primary-800' 
-                    : 'bg-neutral-50/50 dark:bg-neutral-900/20 text-neutral-400 dark:text-neutral-600'
-                  }
-                  ${isSelected ? 'ring-2 ring-primary-500 ring-inset' : ''}
-                `}
-              >
-                <span className={`
-                  text-xs md:text-sm font-medium w-6 h-6 md:w-7 md:h-7 flex items-center justify-center rounded-full mb-1
-                  ${isToday ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30' : ''}
-                `}>
-                  {dayObj.day}
-                </span>
-                
-                <div className="w-full flex flex-col gap-1 overflow-y-auto no-scrollbar">
-                  {dayEvents.map(event => (
-                    <div key={event.id} className={`
-                      text-[10px] px-1.5 py-0.5 rounded truncate w-full border-l-2
-                      ${event.type === 'work' 
-                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-500' 
-                        : 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-500'}
-                    `}>
-                      {event.time} {event.title}
-                    </div>
+            <div className="p-5 space-y-3">
+              <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+                <FileText className="w-4 h-4" />
+                <span>Записей: <strong className="text-neutral-900 dark:text-white">{uploadResult.entriesCount}</strong></span>
+              </div>
+              <div>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-2">Найденные группы:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {uploadResult.groups?.map(g => (
+                    <button
+                      key={g}
+                      onClick={() => { selectGroup(g); setShowUploadModal(false); }}
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors cursor-pointer"
+                    >
+                      {g}
+                    </button>
                   ))}
                 </div>
               </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  const WeekView = () => {
-    const startOfWeek = new Date(currentDate);
-    const day = startOfWeek.getDay();
-    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); 
-    startOfWeek.setDate(diff);
-
-    const weekDays = [];
-    for (let i = 0; i < 7; i++) {
-        const d = new Date(startOfWeek);
-        d.setDate(startOfWeek.getDate() + i);
-        weekDays.push(d);
-    }
-
-    return (
-      <div className="flex flex-col h-full bg-white/40 dark:bg-dark-surface/40 backdrop-blur-xl rounded-2xl border border-white/20 dark:border-dark-border shadow-xl overflow-hidden">
-        {/* Header Row */}
-        <div className="grid grid-cols-8 border-b border-neutral-200 dark:border-dark-border bg-white/50 dark:bg-dark-surface/50">
-           <div className="p-4 border-r border-neutral-200 dark:border-dark-border text-center text-xs text-neutral-400 uppercase font-bold tracking-wider">
-             Время
-           </div>
-           {weekDays.map((d, i) => {
-             const isToday = isSameDay(new Date(), d);
-             return (
-               <div key={i} className={`p-2 text-center border-r border-neutral-200 dark:border-dark-border last:border-0 ${isToday ? 'bg-primary-50 dark:bg-primary-900/10' : ''}`}>
-                   <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">{d.toLocaleString('ru-RU', { weekday: 'short' }).toUpperCase()}</div>
-                   <div className={`text-xl font-bold w-10 h-10 mx-auto flex items-center justify-center rounded-full ${isToday ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30' : 'text-neutral-800 dark:text-neutral-100'}`}>
-                     {d.getDate()}
-                   </div>
-               </div>
-             );
-           })}
-        </div>
-
-        {/* Timeline Grid */}
-        <div className="flex-1 overflow-y-auto relative no-scrollbar">
-           {HOURS.map(hour => (
-             <div key={hour} className="grid grid-cols-8 min-h-[80px] border-b border-dashed border-neutral-200 dark:border-dark-border">
-                {/* Time Label */}
-                <div className="p-2 text-center text-sm font-medium text-neutral-400 border-r border-neutral-200 dark:border-dark-border sticky left-0 bg-white/50 dark:bg-dark-bg/50 backdrop-blur z-10">
-                   {hour}:00
-                </div>
-                
-                {/* Days Columns */}
-                {weekDays.map((d, colIndex) => {
-                  const dayEvents = events.filter(e => isSameDay(e.date, d));
-                  
-                  return (
-                    <div 
-                      key={colIndex} 
-                      className="border-r border-neutral-200 dark:border-dark-border last:border-0 relative group"
-                      onClick={() => handleTimeSlotClick(d, hour)}
-                    >
-                      {/* Hover effect for add */}
-                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-primary-50/50 dark:bg-primary-900/10 transition-opacity cursor-pointer flex items-center justify-center">
-                          <Plus className="w-5 h-5 text-primary-400" />
-                      </div>
-
-                      {/* Events for this slot */}
-                      {dayEvents.map(event => {
-                         const eventHour = parseInt(event.time.split(':')[0]);
-                         if (eventHour === hour) {
-                           return (
-                             <div 
-                               key={event.id}
-                               className={`
-                                 absolute top-1 left-1 right-1 z-20 p-2 rounded-lg text-xs border-l-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow
-                                 ${event.type === 'work' 
-                                   ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-100 border-blue-500' 
-                                   : 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-100 border-purple-500'}
-                               `}
-                               onClick={(e) => { e.stopPropagation(); /* Handle event edit click */ }}
-                             >
-                               <div className="font-bold">{event.title}</div>
-                               <div className="opacity-80">{event.time}</div>
-                             </div>
-                           );
-                         }
-                         return null;
-                      })}
-                    </div>
-                  )
-                })}
-             </div>
-           ))}
-        </div>
-      </div>
-    );
-  };
-
-  const DayView = () => {
-    const dayEvents = events.filter(e => isSameDay(e.date, currentDate));
-
-    return (
-      <div className="flex flex-col h-full bg-white/40 dark:bg-dark-surface/40 backdrop-blur-xl rounded-2xl border border-white/20 dark:border-dark-border shadow-xl overflow-hidden">
-        {/* Header */}
-         <div className="p-4 border-b border-neutral-200 dark:border-dark-border bg-white/50 dark:bg-dark-surface/50 text-center">
-             <h2 className="text-2xl font-bold text-neutral-800 dark:text-neutral-100 capitalize">
-               {currentDate.toLocaleString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
-             </h2>
-         </div>
-
-         {/* Timeline */}
-         <div className="flex-1 overflow-y-auto no-scrollbar relative p-4">
-            {HOURS.map(hour => (
-              <div key={hour} className="flex min-h-[100px] border-b border-neutral-100 dark:border-dark-border group">
-                {/* Time */}
-                <div className="w-20 text-right pr-4 pt-2 text-sm font-medium text-neutral-400 border-r border-neutral-200 dark:border-dark-border">
-                  {hour}:00
-                </div>
-                
-                {/* Slot */}
-                <div 
-                  className="flex-1 relative pl-4 pt-2 hover:bg-neutral-50 dark:hover:bg-neutral-900/20 transition-colors cursor-pointer"
-                  onClick={() => handleTimeSlotClick(currentDate, hour)}
-                >
-                   {/* Ghost Add Button */}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
-                       <Plus className="w-6 h-6 text-neutral-300" />
-                    </div>
-
-                   {/* Events */}
-                   {dayEvents.map(event => {
-                      const eventHour = parseInt(event.time.split(':')[0]);
-                      if (eventHour === hour) {
-                        return (
-                          <div 
-                            key={event.id}
-                            className={`
-                              mb-2 p-3 rounded-xl border-l-4 shadow-sm relative z-10
-                              ${event.type === 'work' 
-                                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500' 
-                                : 'bg-purple-50 dark:bg-purple-900/20 border-purple-500'}
-                            `}
-                            onClick={(e) => { e.stopPropagation(); }}
-                          >
-                             <div className="flex items-center justify-between mb-1">
-                               <h3 className="font-bold text-neutral-800 dark:text-neutral-100">{event.title}</h3>
-                               <span className={`text-xs px-2 py-1 rounded-full ${event.type === 'work' ? 'bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-100' : 'bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-100'}`}>
-                                 {event.type === 'work' ? 'Работа' : 'Учеба'}
-                               </span>
-                             </div>
-                             <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                               <Clock className="w-3 h-3 inline mr-1" /> {event.time}
-                             </p>
-                          </div>
-                        );
-                      }
-                      return null;
-                   })}
-                </div>
-              </div>
-            ))}
-         </div>
-      </div>
-    );
-  };
-
-  // --- Modal ---
-  const AddEventModal = () => {
-    if (!isModalOpen) return null;
-    return (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
-        <div className="bg-white dark:bg-dark-surface rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in duration-200">
-          <div className="p-4 border-b border-neutral-100 dark:border-dark-border flex justify-between items-center bg-neutral-50/50 dark:bg-neutral-900/50">
-            <h3 className="font-bold text-lg text-neutral-800 dark:text-neutral-100">Новое событие</h3>
-            <button onClick={() => setIsModalOpen(false)} className="p-1 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors">
-              <X className="w-5 h-5 text-neutral-500" />
-            </button>
-          </div>
-          <div className="p-4 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Название</label>
-              <input 
-                autoFocus
-                type="text" 
-                value={newEvent.title}
-                onChange={e => setNewEvent({...newEvent, title: e.target.value})}
-                className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-dark-border bg-transparent focus:ring-2 focus:ring-primary-500 outline-none transition-all text-neutral-900 dark:text-white"
-                placeholder="Напр. Созвон с клиентом"
-              />
-            </div>
-            
-            <div>
-               <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Дата</label>
-               <div className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-dark-border bg-neutral-50 dark:bg-neutral-900/50 text-neutral-600 dark:text-neutral-400 text-sm">
-                 {newEvent.date?.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
-               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Время</label>
-                <input 
-                  type="time" 
-                  value={newEvent.time}
-                  onChange={e => setNewEvent({...newEvent, time: e.target.value})}
-                  className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-dark-border bg-transparent focus:ring-2 focus:ring-primary-500 outline-none transition-all text-neutral-900 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Тип</label>
-                <select 
-                  value={newEvent.type}
-                  onChange={e => setNewEvent({...newEvent, type: e.target.value})}
-                  className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-dark-border bg-transparent focus:ring-2 focus:ring-primary-500 outline-none transition-all text-neutral-900 dark:text-white"
-                >
-                  <option value="work">Работа</option>
-                  <option value="study">Учеба</option>
-                  <option value="other">Другое</option>
-                </select>
-              </div>
-            </div>
-            <div className="pt-2 flex gap-2">
-              <button 
-                onClick={saveEvent}
-                className="flex-1 bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 rounded-lg transition-all shadow-lg shadow-primary-500/30 flex items-center justify-center gap-2"
-              >
-                <Plus className="w-4 h-4" /> Добавить
-              </button>
             </div>
           </div>
         </div>
-      </div>
-    );
-  };
+      )}
 
-  // --- Main Render ---
-  return (
-    <div className="h-[calc(100vh-64px)] flex flex-col overflow-hidden bg-neutral-50 dark:bg-dark-bg">
-      <AddEventModal />
-      
       {/* Header */}
-      <div className="px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 bg-white/50 dark:bg-dark-surface/50 backdrop-blur-sm border-b border-neutral-200 dark:border-dark-border z-10">
-        <div>
-          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-neutral-900 to-neutral-600 dark:from-white dark:to-neutral-400 capitalize">
-            {formatMonth(currentDate)}
-          </h1>
-        </div>
+      <div className="px-4 sm:px-6 py-5 bg-white/80 dark:bg-dark-surface/80 backdrop-blur-sm border-b border-neutral-200 dark:border-dark-border sticky top-0 z-20">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Title + Group Selector */}
+            <div className="flex items-center gap-4 flex-wrap">
+              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-neutral-900 to-neutral-600 dark:from-white dark:to-neutral-400">
+                📅 Расписание
+              </h1>
 
-        <div className="flex items-center gap-2 md:gap-4">
-          <div className="flex bg-neutral-100 dark:bg-dark-surface rounded-lg p-1 border border-neutral-200 dark:border-dark-border">
-            {['month', 'week', 'day'].map(v => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all capitalize ${
-                  view === v 
-                    ? 'bg-white dark:bg-neutral-700 shadow-sm text-neutral-900 dark:text-white' 
-                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'
-                }`}
-              >
-                {v === 'month' ? 'Месяц' : v === 'week' ? 'Неделя' : 'День'}
-              </button>
-            ))}
-          </div>
-          
-          <div className="h-6 w-px bg-neutral-200 dark:bg-dark-border mx-1" />
+              {/* Group Selector Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setShowGroupDropdown(!showGroupDropdown)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-dark-surface border border-neutral-200 dark:border-dark-border hover:border-primary-300 dark:hover:border-primary-700 transition-all shadow-sm hover:shadow-md min-w-[180px]"
+                >
+                  {groupsLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-neutral-400" />
+                  ) : (
+                    <BookOpen className="w-4 h-4 text-primary-500" />
+                  )}
+                  <span className={`text-sm font-medium flex-1 text-left ${selectedGroup ? 'text-neutral-900 dark:text-white' : 'text-neutral-400'}`}>
+                    {selectedGroup || 'Выберите группу'}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform ${showGroupDropdown ? 'rotate-180' : ''}`} />
+                </button>
 
-          <div className="flex items-center gap-1">
-            <button onClick={() => navigate(-1)} className="p-2 hover:bg-neutral-100 dark:hover:bg-dark-surface rounded-lg transition-colors">
-              <ChevronLeft className="w-5 h-5 text-neutral-600 dark:text-neutral-300" />
-            </button>
-            <button onClick={goToToday} className="px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-dark-surface rounded-lg text-sm font-medium transition-colors">
-              Сегодня
-            </button>
-            <button onClick={() => navigate(1)} className="p-2 hover:bg-neutral-100 dark:hover:bg-dark-surface rounded-lg transition-colors">
-              <ChevronRight className="w-5 h-5 text-neutral-600 dark:text-neutral-300" />
-            </button>
+                {showGroupDropdown && (
+                  <div className="absolute top-full left-0 mt-2 w-72 bg-white dark:bg-dark-surface rounded-xl border border-neutral-200 dark:border-dark-border shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    {/* Search */}
+                    <div className="p-3 border-b border-neutral-100 dark:border-dark-border">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                        <input
+                          type="text"
+                          value={groupSearch}
+                          onChange={(e) => setGroupSearch(e.target.value)}
+                          placeholder="Поиск группы..."
+                          className="w-full pl-9 pr-3 py-2 rounded-lg border border-neutral-200 dark:border-dark-border bg-neutral-50 dark:bg-dark-bg text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-all text-neutral-900 dark:text-white"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+
+                    {/* Group List */}
+                    <div className="max-h-64 overflow-y-auto py-1">
+                      {filteredGroups.length === 0 ? (
+                        <div className="px-4 py-8 text-center text-neutral-400 text-sm">
+                          {groups.length === 0 ? 'Нет загруженных расписаний' : 'Группа не найдена'}
+                        </div>
+                      ) : (
+                        filteredGroups.map(g => (
+                          <button
+                            key={g}
+                            onClick={() => selectGroup(g)}
+                            className={`w-full text-left px-4 py-2.5 text-sm hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors flex items-center justify-between ${
+                              g === selectedGroup ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 font-semibold' : 'text-neutral-700 dark:text-neutral-300'
+                            }`}
+                          >
+                            <span>{g}</span>
+                            {g === selectedGroup && <Check className="w-4 h-4 text-primary-500" />}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Upload Button (teachers) */}
+            {isTeacher && (
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".docx"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="schedule-file-input"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-medium shadow-lg shadow-primary-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Загрузка...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4" />
+                      <span>Загрузить .docx</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
-          
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="hidden md:flex ml-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg shadow-lg shadow-primary-500/20 transition-all items-center gap-2 font-medium"
-          >
-            <Plus className="w-4 h-4" /> Еще
-          </button>
+
+          {/* Error message */}
+          {error && (
+            <div className="mt-3 px-4 py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm border border-red-200 dark:border-red-800">
+              {error}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden p-2 md:p-4">
-        {view === 'month' && (
-           <div className="h-full bg-white/40 dark:bg-dark-surface/40 backdrop-blur-xl rounded-2xl border border-white/20 dark:border-dark-border shadow-xl p-4 overflow-hidden">
-             <MonthView />
-           </div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        {!selectedGroup ? (
+          /* No Group Selected State */
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 flex items-center justify-center mb-6 shadow-xl shadow-primary-500/10">
+              <BookOpen className="w-10 h-10 text-primary-500" />
+            </div>
+            <h2 className="text-xl font-bold text-neutral-800 dark:text-neutral-100 mb-2">
+              Выберите свою группу
+            </h2>
+            <p className="text-neutral-500 dark:text-neutral-400 text-center max-w-md mb-6">
+              Выберите группу из списка выше, чтобы увидеть расписание. Ваш выбор сохранится.
+            </p>
+            {groups.length > 0 && (
+              <div className="flex flex-wrap gap-2 justify-center max-w-lg">
+                {groups.slice(0, 12).map(g => (
+                  <button
+                    key={g}
+                    onClick={() => selectGroup(g)}
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white dark:bg-dark-surface border border-neutral-200 dark:border-dark-border text-neutral-700 dark:text-neutral-300 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all shadow-sm"
+                  >
+                    {g}
+                  </button>
+                ))}
+                {groups.length > 12 && (
+                  <button
+                    onClick={() => setShowGroupDropdown(true)}
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                  >
+                    +{groups.length - 12} ещё...
+                  </button>
+                )}
+              </div>
+            )}
+            {groups.length === 0 && !groupsLoading && isTeacher && (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 px-5 py-3 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-medium shadow-lg shadow-primary-500/20 transition-all"
+              >
+                <Upload className="w-5 h-5" />
+                Загрузить расписание (.docx)
+              </button>
+            )}
+          </div>
+        ) : loading ? (
+          /* Loading State */
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="w-10 h-10 animate-spin text-primary-500 mb-4" />
+            <p className="text-neutral-500 dark:text-neutral-400">Загрузка расписания...</p>
+          </div>
+        ) : scheduleData.entries.length === 0 ? (
+          /* Empty State */
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-20 h-20 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-4">
+              <FileText className="w-8 h-8 text-neutral-400" />
+            </div>
+            <h2 className="text-lg font-bold text-neutral-800 dark:text-neutral-100 mb-2">
+              Расписание не найдено
+            </h2>
+            <p className="text-neutral-500 dark:text-neutral-400 text-center">
+              Для группы <strong>{selectedGroup}</strong> ещё нет загруженного расписания.
+            </p>
+          </div>
+        ) : (
+          /* Schedule Table */
+          <div className="space-y-6">
+            {/* Upload info */}
+            {scheduleData.uploads.length > 0 && (
+              <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-500 dark:text-neutral-400">
+                <span className="px-3 py-1.5 rounded-lg bg-white dark:bg-dark-surface border border-neutral-200 dark:border-dark-border shadow-sm">
+                  📋 Группа: <strong className="text-neutral-900 dark:text-white">{selectedGroup}</strong>
+                </span>
+                {scheduleData.uploads[0]?.shift && (
+                  <span className="px-3 py-1.5 rounded-lg bg-white dark:bg-dark-surface border border-neutral-200 dark:border-dark-border shadow-sm">
+                    🕐 {scheduleData.uploads[0].shift}
+                  </span>
+                )}
+                {scheduleData.uploads[0]?.week_type && (
+                  <span className="px-3 py-1.5 rounded-lg bg-white dark:bg-dark-surface border border-neutral-200 dark:border-dark-border shadow-sm">
+                    📅 {scheduleData.uploads[0].week_type}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Schedule Cards */}
+            <div className="grid gap-3">
+              {scheduleData.entries.map((entry, idx) => (
+                <div
+                  key={entry.id || idx}
+                  className="group relative bg-white dark:bg-dark-surface rounded-2xl border border-neutral-200 dark:border-dark-border shadow-sm hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-800 transition-all duration-300 overflow-hidden"
+                >
+                  {/* Lesson number accent bar */}
+                  <div className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-2xl ${
+                    entry.lesson_number === 1 ? 'bg-blue-500' :
+                    entry.lesson_number === 2 ? 'bg-emerald-500' :
+                    entry.lesson_number === 3 ? 'bg-amber-500' :
+                    'bg-purple-500'
+                  }`} />
+
+                  <div className="pl-6 pr-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                    {/* Lesson Number Badge */}
+                    <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex flex-col items-center justify-center font-bold text-white shadow-lg ${
+                      entry.lesson_number === 1 ? 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-blue-500/30' :
+                      entry.lesson_number === 2 ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-emerald-500/30' :
+                      entry.lesson_number === 3 ? 'bg-gradient-to-br from-amber-500 to-amber-600 shadow-amber-500/30' :
+                      'bg-gradient-to-br from-purple-500 to-purple-600 shadow-purple-500/30'
+                    }`}>
+                      <span className="text-[10px] opacity-80 leading-none">пара</span>
+                      <span className="text-lg leading-none">{entry.lesson_number}</span>
+                    </div>
+
+                    {/* Subject & Teacher */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-neutral-900 dark:text-white text-base truncate">
+                        {entry.subject || 'Предмет'}
+                      </h3>
+                      <div className="flex items-center gap-1.5 mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+                        <User className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="truncate">{entry.teacher || 'Преподаватель'}</span>
+                      </div>
+                    </div>
+
+                    {/* Time & Room Info */}
+                    <div className="flex items-center gap-4 sm:gap-6 text-sm flex-shrink-0">
+                      {entry.lesson_time && (
+                        <div className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-300">
+                          <Clock className="w-4 h-4 text-primary-500" />
+                          <span className="font-medium">{entry.lesson_time}</span>
+                        </div>
+                      )}
+                      {entry.room && (
+                        <div className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-300">
+                          <MapPin className="w-4 h-4 text-primary-500" />
+                          <span className="font-medium whitespace-nowrap">{entry.room}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
-        {view === 'week' && <WeekView />}
-        {view === 'day' && <DayView />}
       </div>
     </div>
   );

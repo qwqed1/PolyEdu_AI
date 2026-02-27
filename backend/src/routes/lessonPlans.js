@@ -1,6 +1,6 @@
 import express from 'express';
 import { lessonPlansController } from '../controllers/lessonPlansController.js';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -8,9 +8,10 @@ const router = express.Router();
 router.post('/init', lessonPlansController.initTable);
 
 // Защищённые маршруты
-router.use(authMiddleware);
+router.use(authMiddleware, requireRole('teacher'));
 
 // CRUD операции
+router.post('/generate', lessonPlansController.generate);
 router.get('/', lessonPlansController.getAll);
 router.get('/subject/:subjectName', lessonPlansController.getBySubject);
 router.get('/:id', lessonPlansController.getById);

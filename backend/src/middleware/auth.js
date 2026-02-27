@@ -16,12 +16,14 @@ export const authMiddleware = (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const role = decoded.role || 'teacher';
     
     // Устанавливаем объект user для использования в контроллерах
-    req.user = { id: decoded.id };
+    req.user = { id: decoded.id, role };
     req.userId = decoded.id; // Оставляем для обратной совместимости
+    req.userRole = role;
     
-    console.log(`[Auth Middleware] Пользователь аутентифицирован: ${decoded.id}`);
+    console.log(`[Auth Middleware] Пользователь аутентифицирован: ${decoded.id}, роль: ${role}`);
     next();
   } catch (error) {
     console.error('[Auth Middleware] Ошибка проверки токена:', error.message);
@@ -30,4 +32,19 @@ export const authMiddleware = (req, res, next) => {
       message: 'Invalid or expired token' 
     });
   }
+};
+
+export const requireRole = (...allowedRoles) => {
+  return (req, res, next) => {
+    const userRole = req.userRole || req.user?.role || 'teacher';
+
+    if (!allowedRoles.includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied for your role',
+      });
+    }
+
+    next();
+  };
 };

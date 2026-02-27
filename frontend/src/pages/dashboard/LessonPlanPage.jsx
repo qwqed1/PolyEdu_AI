@@ -5,7 +5,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import lessonPlanService from '../../services/lessonPlanService';
-import aiService from '../../services/aiService';
 
 export default function LessonPlanPage() {
   const { user } = useAuth();
@@ -63,7 +62,7 @@ export default function LessonPlanPage() {
     setError('');
 
     try {
-      const totalLessons = Math.ceil(formData.semester_hours / 2); // 2 часа на урок
+      const totalLessons = Math.ceil(formData.semester_hours / 2);
       
       const prompt = `Сгенерируй ${totalLessons} планов уроков для предмета "${formData.subject_name}" по казахстанскому образовательному стандарту.
 
@@ -72,81 +71,31 @@ export default function LessonPlanPage() {
 Курс: ${formData.course}
 Педагог: ${formData.teacher_name}
 
-Для каждого урока используй следующую структуру (на казахском или русском):
+Для каждого урока используй следующую структуру:
+1. Ұйымдастыру кезеңі (5 мин.)
+2. Білімді өзектендіру (15 мин.)
+3. Жаңа білім мен дағдыларды қалыптастыру (40 мин.)
+4. Өтілген тақырыпты бекіту (15 мин.)
+5. Бағалау (5 мин.)
+6. Үй тапсырмасы (3 мин.)
+7. Рефлексия (7 мин.)
 
-1. Ұйымдастыру кезеңі (5 мин.) - Организационный момент
-2. Білімді өзектендіру (15 мин.) - Актуализация знаний
-3. Жаңа білім мен дағдыларды қалыптастыру (40 мин.) - Формирование новых знаний и навыков
-4. Өтілген тақырыпты бекіту (15 мин.) - Закрепление темы
-5. Бағалау (5 мин.) - Оценивание
-6. Үй тапсырмасы (3 мин.) - Домашнее задание
-7. Рефлексия (7 мин.) - Рефлексия
-
-ВАЖНО: Ответ дай в формате JSON массива:
-[
-  {
-    "lesson_number": 1,
-    "topic": "Тема урока",
-    "lesson_type": "Тип урока",
-    "goals": "Цели",
-    "objectives": "Задачи",
-    "expected_results": "Ожидаемые результаты",
-    "resources_methods": "Методические ресурсы",
-    "resources_technical": "Технические средства",
-    "stage_organization": "Содержание организационного момента",
-    "stage_knowledge": "Содержание актуализации знаний",
-    "stage_new_skills": "Содержание формирования новых знаний",
-    "stage_consolidation": "Содержание закрепления",
-    "stage_assessment": "Критерии оценивания",
-    "stage_homework": "Домашнее задание",
-    "stage_reflection": "Вопросы для рефлексии"
-  }
-]
+Ответ дай ТОЛЬКО в виде JSON массива (без пояснений):
+[{"lesson_number":1,"topic":"...","lesson_type":"...","goals":"...","objectives":"...","expected_results":"...","resources_methods":"...","resources_technical":"...","stage_organization":"...","stage_knowledge":"...","stage_new_skills":"...","stage_consolidation":"...","stage_assessment":"...","stage_homework":"...","stage_reflection":"..."}]
 
 Сгенерируй логически связанные темы для всего курса.`;
 
-      const response = await aiService.sendMessage(prompt);
+      const result = await lessonPlanService.generate(prompt);
       
-      console.log('AI Response:', response);
-      
-      // Извлекаем текст ответа из разных возможных форматов
-      let responseText = '';
-      if (response.data?.response) {
-        responseText = response.data.response;
-      } else if (response.message) {
-        responseText = response.message;
-      } else if (typeof response === 'string') {
-        responseText = response;
-      } else {
-        responseText = JSON.stringify(response);
-      }
-      
-      console.log('Response text:', responseText);
-      
-      // Парсим JSON из ответа - ищем массив [...]
-      let generatedPlans = [];
-      const jsonMatch = responseText.match(/\[[\s\S]*?\]/);
-      
-      if (jsonMatch) {
-        try {
-          generatedPlans = JSON.parse(jsonMatch[0]);
-          console.log('Parsed plans:', generatedPlans.length);
-        } catch (parseErr) {
-          console.error('JSON parse error:', parseErr);
-          console.error('Attempted to parse:', jsonMatch[0].substring(0, 500));
-          setError('Ошибка парсинга ответа AI. Попробуйте ещё раз.');
-          setGenerating(false);
-          return;
-        }
-      } else {
-        console.error('No JSON array found in response:', responseText.substring(0, 500));
-        setError('AI не вернул данные в нужном формате. Попробуйте ещё раз.');
+      if (!result.success || !result.plans || result.plans.length === 0) {
+        setError('AI не вернул данные. Попробуйте ещё раз.');
         setGenerating(false);
         return;
       }
 
-      // Добавляем общие данные к каждому плану
-      const plansWithMeta = generatedPlans.map((plan, index) => ({
+      console.log('Generated plans:', result.plans.length);
+
+      const plansWithMeta = result.plans.map((plan, index) => ({
         ...plan,
         subject_name: formData.subject_name,
         module_code: formData.module_code,
@@ -157,15 +106,12 @@ export default function LessonPlanPage() {
         lesson_number: plan.lesson_number || index + 1
       }));
 
-      // Сохраняем в базу
       await lessonPlanService.createMany(plansWithMeta);
-      
-      // Перезагружаем список
       await loadPlans();
 
     } catch (err) {
       console.error('Generate error:', err);
-      setError(err.message || 'Ошибка генерации планов');
+      setError(err.response?.data?.error || err.message || 'Ошибка генерации планов');
     } finally {
       setGenerating(false);
     }

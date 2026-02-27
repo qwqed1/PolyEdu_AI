@@ -11,6 +11,14 @@ class LessonPlanService {
     };
   }
 
+  async generate(prompt) {
+    const response = await axios.post(`${API_URL}/generate`, { prompt }, {
+      headers: this.getAuthHeaders(),
+      timeout: 300000
+    });
+    return response.data;
+  }
+
   async getAll() {
     const response = await axios.get(API_URL, {
       headers: this.getAuthHeaders()

@@ -1,13 +1,15 @@
 import express from 'express';
 import aiGameController from '../controllers/aiGameController.js';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.post('/generate', authMiddleware, aiGameController.generate);
-router.post('/save', authMiddleware, aiGameController.save);
-router.get('/', authMiddleware, aiGameController.getAll);
-router.get('/:id', authMiddleware, aiGameController.getById);
-router.delete('/:id', authMiddleware, aiGameController.delete);
+router.use(authMiddleware, requireRole('teacher'));
+
+router.post('/generate', aiGameController.generate);
+router.post('/save', aiGameController.save);
+router.get('/', aiGameController.getAll);
+router.get('/:id', aiGameController.getById);
+router.delete('/:id', aiGameController.delete);
 
 export default router;

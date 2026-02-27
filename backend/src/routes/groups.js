@@ -1,15 +1,17 @@
 import express from 'express';
 import { groupController } from '../controllers/groupController.js';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Все роуты защищены авторизацией
-router.get('/', authMiddleware, groupController.getAll);
-router.get('/:id', authMiddleware, groupController.getById);
-router.post('/', authMiddleware, groupController.create);
-router.put('/:id', authMiddleware, groupController.update);
-router.delete('/:id', authMiddleware, groupController.delete);
-router.get('/:id/stats', authMiddleware, groupController.getStats);
+// Все роуты защищены авторизацией и доступны только преподавателям
+router.use(authMiddleware, requireRole('teacher'));
+
+router.get('/', groupController.getAll);
+router.get('/:id', groupController.getById);
+router.post('/', groupController.create);
+router.put('/:id', groupController.update);
+router.delete('/:id', groupController.delete);
+router.get('/:id/stats', groupController.getStats);
 
 export default router;

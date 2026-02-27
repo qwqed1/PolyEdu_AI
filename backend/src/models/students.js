@@ -55,6 +55,29 @@ export const StudentModel = {
   },
 
   /**
+   * Массовое создание студентов
+   */
+  async bulkCreate(names, groupId) {
+    if (!names || names.length === 0) return [];
+    
+    const values = [];
+    const placeholders = [];
+    names.forEach((name, i) => {
+      placeholders.push(`($${i * 2 + 1}, $${i * 2 + 2})`);
+      values.push(name, groupId);
+    });
+    
+    const result = await pool.query(
+      `INSERT INTO students (full_name, group_id) 
+       VALUES ${placeholders.join(', ')} 
+       RETURNING id, full_name, group_id, created_at`,
+      values
+    );
+    return result.rows;
+  },
+
+
+  /**
    * Обновить студента
    */
   async update(id, fullName) {

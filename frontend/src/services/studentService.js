@@ -52,6 +52,20 @@ class StudentService {
       throw new Error(error.response?.data?.error || 'Ошибка при удалении студента');
     }
   }
+
+  /**
+   * Массовое создание студентов
+   */
+  async bulkCreate(names, groupId) {
+    try {
+      const response = await axios.post(`${API_URL}/bulk`, { names, groupId }, {
+        headers: this.getAuthHeaders()
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Ошибка при массовом добавлении студентов');
+    }
+  }
 }
 
 export default new StudentService();

@@ -1,102 +1,62 @@
-import axios from 'axios';
+import openRouterAgent from './openRouterAgent.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 class AIService {
   constructor() {
-    this.webhookUrl = process.env.N8N_WEBHOOK_URL;
-    this.timeout = 180000; // 180 seconds timeout для генерации планов
+    this.timeout = 120000; // 120 секунд
   }
 
   /**
-   * Отправка сообщения в n8n AI агент
+   * Отправка сообщения в AI агент AIZERT (OpenRouter gpt-oss-120b)
    * @param {string} message - Сообщение пользователя
    * @param {number} userId - ID пользователя
    * @param {string} context - Дополнительный контекст (опционально)
-   * @returns {Promise<object>} Ответ от AI агента
+   * @returns {Promise<object>} Ответ от AI
    */
   async sendMessage(message, userId, context = '') {
     try {
       console.log(`[AI Service] ==========================================`);
-      console.log(`[AI Service] Отправка сообщения в n8n для пользователя ${userId}`);
-      console.log(`[AI Service] Webhook URL: ${this.webhookUrl}`);
-      console.log(`[AI Service] Timeout: ${this.timeout}ms`);
-      
-      const payload = {
-        message,
-        userId,
-        context,
-        timestamp: new Date().toISOString()
-      };
+      console.log(`[AI Service] Запрос от пользователя ${userId}`);
+      console.log(`[AI Service] Провайдер: OpenRouter (text model)`);
 
-      console.log(`[AI Service] Payload:`, JSON.stringify(payload, null, 2));
+      const fullMessage = context ? `${context}\n\n${message}` : message;
+
+      console.log(`[AI Service] Сообщение: "${fullMessage.substring(0, 100)}..."`);
 
       const startTime = Date.now();
-      console.log(`[AI Service] Отправка запроса... (${new Date().toISOString()})`);
 
-      const response = await axios.post(this.webhookUrl, payload, {
-        timeout: this.timeout,
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
+      const result = await openRouterAgent.chat(fullMessage, userId);
 
       const duration = Date.now() - startTime;
-      console.log(`[AI Service] Получен ответ от n8n (status ${response.status}) за ${duration}ms`);
+      console.log(`[AI Service] Ответ получен за ${duration}ms`);
 
-      console.log(`[AI Service] Получен ответ от n8n (status ${response.status})`);
-      console.log(`[AI Service] Response data:`, JSON.stringify(response.data, null, 2));
-      
-      // Обработка различных форматов ответов от n8n
-      let responseMessage = response.data;
-      
-      // Если ответ - это объект с полем message/response/text
-      if (typeof response.data === 'object') {
-        responseMessage = response.data.message || 
-                         response.data.response || 
-                         response.data.text ||
-                         response.data.output ||
-                         JSON.stringify(response.data);
-      }
-      
+      const responseMessage = result.message || JSON.stringify(result);
+
       return {
         success: true,
         data: {
           response: responseMessage,
-          rawData: response.data
-        }
+          rawData: result,
+        },
       };
     } catch (error) {
-      console.error('[AI Service] Ошибка при запросе к n8n:', error.message);
-      
-      if (error.code === 'ECONNABORTED') {
-        throw new Error('Превышено время ожидания ответа от AI агента');
-      }
-      
-      if (error.response) {
-        console.error('[AI Service] Response error:', error.response.data);
-        throw new Error(`Ошибка AI агента: ${error.response.status} - ${error.response.statusText}`);
-      }
-      
-      if (error.request) {
-        throw new Error('AI агент недоступен. Проверьте подключение к интернету');
-      }
-      
-      throw new Error('Неизвестная ошибка при обращении к AI агенту');
+      console.error('[AI Service] Ошибка:', error.message);
+      console.error('[AI Service] Stack:', error.stack);
+
+      // Пробрасываем реальную ошибку OpenRouter без подмены
+      throw new Error(error.message || 'Неизвестная ошибка при обращении к AI');
     }
   }
 
   /**
-   * Проверка доступности n8n webhook
+   * Проверка доступности OpenRouter API
    * @returns {Promise<boolean>}
    */
   async healthCheck() {
     try {
-      const response = await axios.get(this.webhookUrl, {
-        timeout: 5000
-      });
-      return response.status === 200;
+      return await openRouterAgent.healthCheck();
     } catch (error) {
       console.error('[AI Service] Health check failed:', error.message);
       return false;

@@ -1,5 +1,5 @@
 import { AIGameModel } from '../models/aiGames.js';
-import aiService from '../services/aiService.js';
+import openRouterService from '../services/openRouterService.js';
 
 const GAME_SYSTEM_PROMPT = `Ты — генератор образовательных HTML-игр. Пользователь описывает игру, а ты создаёшь ПОЛНЫЙ, РАБОЧИЙ HTML-файл с встроенными CSS и JavaScript.
 
@@ -35,18 +35,16 @@ class AIGameController {
       }
 
       console.log(`[AI Game] Генерация игры для пользователя ${userId}: "${prompt.substring(0, 80)}..."`);
+      console.log(`[AI Game] Используется Qwen3 Coder 480B (OpenRouter)`);
 
-      const fullMessage = `${GAME_SYSTEM_PROMPT}\n\nЗапрос пользователя: ${prompt.trim()}`;
+      // Используем coder-модель (Qwen3 Coder 480B) через OpenRouter
+      const messages = [
+        { role: 'system', content: GAME_SYSTEM_PROMPT },
+        { role: 'user', content: prompt.trim() },
+      ];
 
-      const result = await aiService.sendMessage(fullMessage, userId, 'game-generation');
-
-      let htmlCode = '';
-      if (result.data) {
-        htmlCode = result.data.response || result.data.message || result.data.text || result.data.output || '';
-        if (typeof htmlCode === 'object') {
-          htmlCode = JSON.stringify(htmlCode);
-        }
-      }
+      const completion = await openRouterService.chatCoder(messages);
+      let htmlCode = openRouterService.extractText(completion);
 
       // Извлекаем HTML из возможной markdown-обёртки
       htmlCode = extractHtml(htmlCode);

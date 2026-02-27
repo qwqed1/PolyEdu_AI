@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
@@ -8,9 +9,11 @@ import Card from '../../components/common/Card';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('student');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -19,10 +22,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
+      await login(email, password, role);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Ошибка авторизации');
+      setError(err.response?.data?.message || t.auth.authError);
     } finally {
       setLoading(false);
     }
@@ -38,12 +41,44 @@ export default function LoginPage() {
             </div>
           </div>
           <h1 className="text-3xl font-bold gradient-text-primary mb-2">PolyEduAI</h1>
-          <p className="text-neutral-600 dark:text-neutral-400">Вход в аккаунт студента</p>
+          <p className="text-neutral-600 dark:text-neutral-400">
+            {t.auth.loginTitle(role)}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+              {t.auth.loginAs}
+            </label>
+            <div className="grid grid-cols-2 gap-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 p-1">
+              <button
+                type="button"
+                onClick={() => setRole('student')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  role === 'student'
+                    ? 'bg-white dark:bg-neutral-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                    : 'text-neutral-600 dark:text-neutral-300'
+                }`}
+              >
+                {t.auth.student}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('teacher')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  role === 'teacher'
+                    ? 'bg-white dark:bg-neutral-700 text-primary-600 dark:text-primary-400 shadow-sm'
+                    : 'text-neutral-600 dark:text-neutral-300'
+                }`}
+              >
+                {t.auth.teacher}
+              </button>
+            </div>
+          </div>
+
           <Input
-            label="Email"
+            label={t.auth.email}
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -52,7 +87,7 @@ export default function LoginPage() {
           />
 
           <Input
-            label="Пароль"
+            label={t.auth.password}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -67,15 +102,15 @@ export default function LoginPage() {
           )}
 
           <Button type="submit" className="w-full" loading={loading}>
-            Войти
+            {t.auth.loginBtn}
           </Button>
         </form>
 
         <div className="mt-6 text-center">
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            Нет аккаунта?{' '}
+            {t.auth.noAccount}{' '}
             <Link to="/register" className="text-primary-600 dark:text-primary-400 hover:underline font-medium">
-              Зарегистрироваться
+              {t.auth.register}
             </Link>
           </p>
         </div>

@@ -1,5 +1,5 @@
 import express from 'express';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, requireRole } from '../middleware/auth.js';
 import {
   getQuizzes,
   getQuizById,
@@ -27,21 +27,23 @@ router.post('/play/:code/result', saveGameResult);
 router.get('/play/:code/leaderboard', getLeaderboard);
 
 // Защищённые маршруты (для преподавателей)
-router.get('/', authMiddleware, getQuizzes);
-router.get('/stats', authMiddleware, getQuizStats);
-router.get('/:id', authMiddleware, getQuizById);
-router.get('/:id/results', authMiddleware, getQuizResults);
-router.delete('/:id/results', authMiddleware, clearQuizResults);
-router.post('/', authMiddleware, createQuiz);
-router.put('/:id', authMiddleware, updateQuiz);
-router.delete('/:id', authMiddleware, deleteQuiz);
+router.use(authMiddleware, requireRole('teacher'));
+
+router.get('/', getQuizzes);
+router.get('/stats', getQuizStats);
+router.get('/:id', getQuizById);
+router.get('/:id/results', getQuizResults);
+router.delete('/:id/results', clearQuizResults);
+router.post('/', createQuiz);
+router.put('/:id', updateQuiz);
+router.delete('/:id', deleteQuiz);
 
 // Управление игрой
-router.post('/:id/activate', authMiddleware, activateQuiz);
-router.post('/:id/deactivate', authMiddleware, deactivateQuiz);
+router.post('/:id/activate', activateQuiz);
+router.post('/:id/deactivate', deactivateQuiz);
 
 // ИИ-генерация
-router.post('/generate', authMiddleware, generateQuestions);
+router.post('/generate', generateQuestions);
 
 export default router;
 
