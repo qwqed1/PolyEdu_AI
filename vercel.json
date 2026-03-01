@@ -5,7 +5,9 @@
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "dist"
+        "distDir": "dist",
+        "installCommand": "npm install",
+        "buildCommand": "npm run build"
       }
     },
     {
@@ -26,8 +28,11 @@
       "dest": "backend/server.js"
     },
     {
+      "handle": "filesystem"
+    },
+    {
       "src": "/(.*)",
-      "dest": "frontend/dist/$1"
+      "dest": "frontend/dist/index.html"
     }
   ]
 }
