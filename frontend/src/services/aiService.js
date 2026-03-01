@@ -26,7 +26,9 @@ class AIService {
       return response.data;
     } catch (error) {
       if (error.response) {
-        throw new Error(error.response.data.error || 'Ошибка сервера');
+        const errData = error.response.data.error || error.response.data.message;
+        const errText = typeof errData === 'object' && errData !== null ? errData.message || JSON.stringify(errData) : errData;
+        throw new Error(errText || 'Ошибка сервера');
       } else if (error.request) {
         throw new Error('Сервер не отвечает');
       } else {

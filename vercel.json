@@ -19,8 +19,18 @@
       "dest": "backend/server.js"
     },
     {
+      "src": "/health",
+      "dest": "backend/server.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "frontend/dist/$1"
     }
-  ]
+  ],
+  "functions": {
+    "backend/server.js": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  }
 }

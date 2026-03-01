@@ -47,9 +47,31 @@ app.use('/api', moduleRoutes);
 app.use('/api/ai-games', aiGameRoutes);
 app.use('/api/schedule-upload', scheduleUploadRoutes);
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'AIZERT Backend is running' });
+// Health check with diagnostics
+app.get('/health', async (req, res) => {
+  const envCheck = {
+    DATABASE_URL: !!process.env.DATABASE_URL,
+    JWT_SECRET: !!process.env.JWT_SECRET,
+    OPENROUTER_API_KEY: !!process.env.OPENROUTER_API_KEY,
+    OPENROUTER_TEXT_MODEL: process.env.OPENROUTER_TEXT_MODEL || '(not set)',
+    NODE_ENV: process.env.NODE_ENV || '(not set)',
+    VERCEL: !!process.env.VERCEL,
+  };
+
+  let dbStatus = 'not tested';
+  try {
+    const result = await pool.query('SELECT NOW() as now');
+    dbStatus = `connected (${result.rows[0].now})`;
+  } catch (err) {
+    dbStatus = `error: ${err.message}`;
+  }
+
+  res.json({
+    status: 'OK',
+    message: 'AIZERT Backend is running',
+    env: envCheck,
+    database: dbStatus,
+  });
 });
 
 // Initialize database tables and test connection (Только для локального запуска)
