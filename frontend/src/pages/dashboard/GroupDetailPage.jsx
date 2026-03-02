@@ -277,9 +277,9 @@ export default function GroupDetailPage() {
           Назад
         </Link>
         
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{group.name}</h1>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 w-full md:w-auto">
             <button
               onClick={() => setShowAddModule(true)}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition"
@@ -501,7 +501,7 @@ export default function GroupDetailPage() {
           ) : (
             <div className="space-y-3">
               {students.map((student) => (
-                <div key={student.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div key={student.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center text-white font-bold">
                       {student.full_name.charAt(0)}

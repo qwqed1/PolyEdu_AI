@@ -445,7 +445,7 @@ export default function CreateQuizPage() {
                     </div>
 
                     {/* Answers */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 ml-10">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 ml-2 sm:ml-10">
                       {q.answers.map((a, aIndex) => (
                         <div
                           key={aIndex}
@@ -478,7 +478,7 @@ export default function CreateQuizPage() {
                     </div>
 
                     {q.explanation && (
-                      <div className="mt-3 ml-10 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm text-blue-700 dark:text-blue-300">
+                      <div className="mt-3 ml-2 sm:ml-10 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm text-blue-700 dark:text-blue-300">
                         💡 {q.explanation}
                       </div>
                     )}
@@ -489,18 +489,18 @@ export default function CreateQuizPage() {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-4">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-4 mt-8">
             <button
               type="button"
               onClick={() => navigate('/interactive-games')}
-              className="px-6 py-3 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-dark-surface rounded-xl font-medium transition-colors"
+              className="w-full sm:w-auto px-6 py-3 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-dark-surface rounded-xl font-medium transition-colors"
             >
               Отмена
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 transition-all"
+              className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 transition-all"
             >
               {saving ? (
                 <>

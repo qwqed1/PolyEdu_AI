@@ -183,7 +183,7 @@ export default function GameGeneratorPage() {
   return (
     <div className="h-[calc(100vh-4rem)] bg-neutral-50 dark:bg-dark-bg flex">
       {/* Left Sidebar */}
-      <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0">
+      <div className="hidden lg:flex w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-col flex-shrink-0">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <Gamepad2 className="w-5 h-5 text-primary-500" />
@@ -242,9 +242,9 @@ export default function GameGeneratorPage() {
         </div>
 
       {/* Main content: Chat + Preview */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         {/* Chat Panel */}
-        <div className={`flex flex-col ${showPreview && !isFullscreen ? 'w-1/2' : 'w-full'} transition-all duration-300`}>
+        <div className={`flex flex-col h-full ${showPreview && !isFullscreen ? 'w-full h-1/2 lg:w-1/2 lg:h-full' : 'w-full'} transition-all duration-300`}>
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4">
             <div className="max-w-2xl mx-auto space-y-4">
@@ -325,9 +325,9 @@ export default function GameGeneratorPage() {
 
         {/* Preview Panel */}
         {showPreview && !isFullscreen && (
-          <div className="w-1/2 border-l border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900">
+          <div className="w-full h-1/2 lg:w-1/2 lg:h-full border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900">
             {/* Preview toolbar */}
-            <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <div className="flex flex-wrap items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 gap-2">
               <div className="flex items-center gap-2">
                 <Play className="w-4 h-4 text-green-500" />
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Превью игры</span>
@@ -452,7 +452,7 @@ export default function GameGeneratorPage() {
 
         {/* Saved Games Panel */}
         {showSavedList && (
-          <div className="absolute right-0 top-0 bottom-0 w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-xl z-40 flex flex-col">
+          <div className="absolute right-0 top-0 bottom-0 w-full sm:w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-xl z-40 flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
               <h3 className="font-semibold text-gray-900 dark:text-white">Мои игры</h3>
               <button onClick={() => setShowSavedList(false)} className="text-gray-400 hover:text-gray-600">

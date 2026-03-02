@@ -84,7 +84,7 @@ export default function InteractiveGamesPage() {
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-dark-bg flex">
       {/* Left Sidebar */}
-      <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0">
+      <div className="hidden lg:flex w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-col flex-shrink-0">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <Gamepad2 className="w-5 h-5 text-primary-500" />
@@ -133,7 +133,7 @@ export default function InteractiveGamesPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 py-8 px-6 lg:px-8 overflow-y-auto">
+      <div className="flex-1 py-4 sm:py-8 px-4 sm:px-6 lg:px-8 overflow-y-auto w-full">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
@@ -146,13 +146,22 @@ export default function InteractiveGamesPage() {
                 Создавайте увлекательные тесты и викторины для студентов
               </p>
             </div>
-            <Link
-              to="/interactive-games/create"
-              className="mt-4 sm:mt-0 inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
-            >
-              <Plus className="w-5 h-5" />
-              Создать викторину
-            </Link>
+            <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <Link
+                to="/interactive-games/ai-generator"
+                className="lg:hidden inline-flex justify-center items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+              >
+                <Wand2 className="w-5 h-5" />
+                AI Генератор
+              </Link>
+              <Link
+                to="/interactive-games/create"
+                className="inline-flex justify-center items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
+              >
+                <Plus className="w-5 h-5" />
+                Создать викторину
+              </Link>
+            </div>
           </div>
 
           {/* Stats Cards */}
