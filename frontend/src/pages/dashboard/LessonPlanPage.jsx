@@ -1,10 +1,51 @@
-import { useState, useEffect } from 'react';
-import { 
-  BookOpen, Plus, Trash2, Edit3, Loader2, AlertCircle, Calendar,
-  ChevronDown, ChevronUp, Save, X, Sparkles, FileText, Clock
+import { useEffect, useState } from 'react';
+import {
+  AlertCircle,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Download,
+  FileText,
+  Loader2,
+  Sparkles,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import lessonPlanService from '../../services/lessonPlanService';
+
+const STAGES = [
+  { key: 'stage_organization', title: 'Ұйымдастыру кезеңі (5 мин.)' },
+  { key: 'stage_knowledge', title: 'Білімді өзектендіру (15 мин.)' },
+  { key: 'stage_new_skills', title: 'Жаңа білім мен дағдыларды қалыптастыру (40 мин.)' },
+  { key: 'stage_consolidation', title: 'Өтілген тақырыпты бекіту (15 мин.)' },
+  { key: 'stage_assessment', title: 'Бағалау (5 мин.)' },
+  { key: 'stage_homework', title: 'Үй тапсырмасы (3 мин.)' },
+  { key: 'stage_reflection', title: 'Рефлексия (7 мин.)' },
+];
+
+function saveBlob(blob, filename) {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename || 'lesson-plan.docx';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+function StageItem({ title, content }) {
+  return (
+    <div className="bg-neutral-50 dark:bg-dark-bg rounded-lg p-3">
+      <div className="font-medium text-primary-700 dark:text-primary-400 mb-1">{title}</div>
+      <div className="text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap">
+        {content || 'Не заполнено'}
+      </div>
+    </div>
+  );
+}
 
 export default function LessonPlanPage() {
   const { user } = useAuth();
@@ -13,16 +54,15 @@ export default function LessonPlanPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [expandedPlan, setExpandedPlan] = useState(null);
-  const [editingPlan, setEditingPlan] = useState(null);
-
-  // Форма генерации
+  const [downloadingPlanId, setDownloadingPlanId] = useState(null);
+  const [downloadingSubject, setDownloadingSubject] = useState('');
   const [formData, setFormData] = useState({
     subject_name: '',
     module_code: '',
     group_name: '',
     course: 1,
     semester_hours: 36,
-    teacher_name: user?.full_name || ''
+    teacher_name: user?.full_name || '',
   });
 
   useEffect(() => {
@@ -33,20 +73,18 @@ export default function LessonPlanPage() {
     try {
       setLoading(true);
       setError('');
-      
-      // Сначала инициализируем таблицу (если ещё не создана)
+
       try {
         await lessonPlanService.initTable();
       } catch (initErr) {
         console.log('Table init:', initErr.message);
       }
-      
-      // Загружаем данные
+
       const data = await lessonPlanService.getAll();
       setPlans(data || []);
     } catch (err) {
       console.error('Error loading plans:', err);
-      setPlans([]); // Показываем пустой список вместо ошибки
+      setPlans([]);
     } finally {
       setLoading(false);
     }
@@ -54,7 +92,7 @@ export default function LessonPlanPage() {
 
   const generatePlans = async () => {
     if (!formData.subject_name || !formData.group_name) {
-      setError('Укажите название предмета и группу');
+      setError('Укажите модуль/предмет и группу');
       return;
     }
 
@@ -63,15 +101,15 @@ export default function LessonPlanPage() {
 
     try {
       const totalLessons = Math.ceil(formData.semester_hours / 2);
-      
-      const prompt = `Сгенерируй ${totalLessons} планов уроков для предмета "${formData.subject_name}" по казахстанскому образовательному стандарту.
+      const prompt = `Сгенерируй ${totalLessons} планов уроков по казахстанскому стандарту.
 
-Модуль: ${formData.module_code || formData.subject_name}
+Модуль/пән атауы: ${formData.subject_name}
+Дополнительный код модуля: ${formData.module_code || ''}
 Группа: ${formData.group_name}
 Курс: ${formData.course}
 Педагог: ${formData.teacher_name}
 
-Для каждого урока используй следующую структуру:
+Для каждого урока используй структуру:
 1. Ұйымдастыру кезеңі (5 мин.)
 2. Білімді өзектендіру (15 мин.)
 3. Жаңа білім мен дағдыларды қалыптастыру (40 мин.)
@@ -80,20 +118,15 @@ export default function LessonPlanPage() {
 6. Үй тапсырмасы (3 мин.)
 7. Рефлексия (7 мин.)
 
-Ответ дай ТОЛЬКО в виде JSON массива (без пояснений):
-[{"lesson_number":1,"topic":"...","lesson_type":"...","goals":"...","objectives":"...","expected_results":"...","resources_methods":"...","resources_technical":"...","stage_organization":"...","stage_knowledge":"...","stage_new_skills":"...","stage_consolidation":"...","stage_assessment":"...","stage_homework":"...","stage_reflection":"..."}]
-
-Сгенерируй логически связанные темы для всего курса.`;
+Ответ дай только в виде JSON массива без пояснений:
+[{"lesson_number":1,"topic":"...","lesson_type":"...","goals":"...","objectives":"...","expected_results":"...","resources_methods":"...","resources_technical":"...","stage_organization":"...","stage_knowledge":"...","stage_new_skills":"...","stage_consolidation":"...","stage_assessment":"...","stage_homework":"...","stage_reflection":"..."}]`;
 
       const result = await lessonPlanService.generate(prompt);
-      
+
       if (!result.success || !result.plans || result.plans.length === 0) {
         setError('AI не вернул данные. Попробуйте ещё раз.');
-        setGenerating(false);
         return;
       }
-
-      console.log('Generated plans:', result.plans.length);
 
       const plansWithMeta = result.plans.map((plan, index) => ({
         ...plan,
@@ -103,12 +136,11 @@ export default function LessonPlanPage() {
         course: formData.course,
         teacher_name: formData.teacher_name,
         semester_hours: formData.semester_hours,
-        lesson_number: plan.lesson_number || index + 1
+        lesson_number: plan.lesson_number || index + 1,
       }));
 
       await lessonPlanService.createMany(plansWithMeta);
       await loadPlans();
-
     } catch (err) {
       console.error('Generate error:', err);
       setError(err.response?.data?.error || err.message || 'Ошибка генерации планов');
@@ -118,30 +150,52 @@ export default function LessonPlanPage() {
   };
 
   const deletePlan = async (id) => {
-    if (!confirm('Удалить этот план урока?')) return;
-    
+    if (!window.confirm('Удалить этот план урока?')) {
+      return;
+    }
+
     try {
       await lessonPlanService.delete(id);
-      setPlans(plans.filter(p => p.id !== id));
+      setPlans((current) => current.filter((plan) => plan.id !== id));
     } catch (err) {
+      console.error('Delete plan error:', err);
       setError('Ошибка удаления');
     }
   };
 
-  const updatePlan = async (id, data) => {
+  const downloadPlanDocx = async (planId) => {
     try {
-      const updated = await lessonPlanService.update(id, data);
-      setPlans(plans.map(p => p.id === id ? updated : p));
-      setEditingPlan(null);
+      setDownloadingPlanId(planId);
+      setError('');
+      const { blob, filename } = await lessonPlanService.exportDocx(planId);
+      saveBlob(blob, filename);
     } catch (err) {
-      setError('Ошибка сохранения');
+      console.error('DOCX export error:', err);
+      setError(err.response?.data?.error || err.message || 'Ошибка выгрузки DOCX');
+    } finally {
+      setDownloadingPlanId(null);
     }
   };
 
-  // Группировка планов по предмету
+  const downloadSubjectDocx = async (subjectName) => {
+    try {
+      setDownloadingSubject(subjectName);
+      setError('');
+      const { blob, filename } = await lessonPlanService.exportSubjectDocx(subjectName);
+      saveBlob(blob, filename);
+    } catch (err) {
+      console.error('Subject DOCX export error:', err);
+      setError(err.response?.data?.error || err.message || 'Ошибка выгрузки DOCX');
+    } finally {
+      setDownloadingSubject('');
+    }
+  };
+
   const groupedPlans = plans.reduce((acc, plan) => {
-    const key = plan.subject_name;
-    if (!acc[key]) acc[key] = [];
+    const key = plan.subject_name || 'Без предмета';
+    if (!acc[key]) {
+      acc[key] = [];
+    }
     acc[key].push(plan);
     return acc;
   }, {});
@@ -157,18 +211,16 @@ export default function LessonPlanPage() {
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-dark-bg py-8 px-4">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold gradient-text-primary flex items-center gap-3">
             <BookOpen className="w-8 h-8" />
             Оқу сабағының жоспары
           </h1>
           <p className="text-neutral-600 dark:text-neutral-400 mt-2">
-            Планы уроков на семестр по казахстанскому образовательному стандарту
+            Генерация, хранение и выгрузка планов уроков в DOCX
           </p>
         </div>
 
-        {/* Error */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-600" />
@@ -179,32 +231,29 @@ export default function LessonPlanPage() {
           </div>
         )}
 
-        {/* Generation Form */}
         <div className="bg-white dark:bg-dark-card rounded-2xl shadow-lg p-6 mb-8 border border-neutral-200 dark:border-dark-border">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-amber-500" />
-            Генерация планов уроков с помощью ИИ
+            Генерация планов уроков
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium mb-1">Модуль/Пән атауы *</label>
               <input
                 type="text"
-                placeholder="НМЗ «***» ОН 3.1 «***»"
                 value={formData.subject_name}
-                onChange={(e) => setFormData({...formData, subject_name: e.target.value})}
+                onChange={(event) => setFormData((current) => ({ ...current, subject_name: event.target.value }))}
                 className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-dark-border bg-white dark:bg-dark-bg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium mb-1">Топ (Группа) *</label>
+              <label className="block text-sm font-medium mb-1">Топ (группа) *</label>
               <input
                 type="text"
-                placeholder="ИС23-1А"
                 value={formData.group_name}
-                onChange={(e) => setFormData({...formData, group_name: e.target.value})}
+                onChange={(event) => setFormData((current) => ({ ...current, group_name: event.target.value }))}
                 className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-dark-border bg-white dark:bg-dark-bg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
@@ -213,7 +262,7 @@ export default function LessonPlanPage() {
               <label className="block text-sm font-medium mb-1">Курс</label>
               <select
                 value={formData.course}
-                onChange={(e) => setFormData({...formData, course: parseInt(e.target.value)})}
+                onChange={(event) => setFormData((current) => ({ ...current, course: parseInt(event.target.value, 10) }))}
                 className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-dark-border bg-white dark:bg-dark-bg focus:ring-2 focus:ring-primary-500"
               >
                 <option value={1}>1 курс</option>
@@ -227,9 +276,8 @@ export default function LessonPlanPage() {
               <label className="block text-sm font-medium mb-1">Педагог</label>
               <input
                 type="text"
-                placeholder="ФИО педагога"
                 value={formData.teacher_name}
-                onChange={(e) => setFormData({...formData, teacher_name: e.target.value})}
+                onChange={(event) => setFormData((current) => ({ ...current, teacher_name: event.target.value }))}
                 className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-dark-border bg-white dark:bg-dark-bg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
@@ -241,11 +289,14 @@ export default function LessonPlanPage() {
                 min="2"
                 max="200"
                 value={formData.semester_hours}
-                onChange={(e) => setFormData({...formData, semester_hours: parseInt(e.target.value) || 36})}
+                onChange={(event) => setFormData((current) => ({
+                  ...current,
+                  semester_hours: parseInt(event.target.value, 10) || 36,
+                }))}
                 className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-dark-border bg-white dark:bg-dark-bg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
               <p className="text-xs text-neutral-500 mt-1">
-                ≈ {Math.ceil(formData.semester_hours / 2)} уроков (по 2 часа)
+                ≈ {Math.ceil(formData.semester_hours / 2)} уроков
               </p>
             </div>
           </div>
@@ -263,13 +314,12 @@ export default function LessonPlanPage() {
             ) : (
               <>
                 <Sparkles className="w-6 h-6" />
-                🚀 Сгенерировать планы
+                Сгенерировать планы
               </>
             )}
           </button>
         </div>
 
-        {/* Plans List */}
         {Object.keys(groupedPlans).length === 0 ? (
           <div className="text-center py-16 bg-white dark:bg-dark-card rounded-2xl border border-neutral-200 dark:border-dark-border">
             <FileText className="w-16 h-16 mx-auto text-neutral-400 mb-4" />
@@ -283,39 +333,81 @@ export default function LessonPlanPage() {
         ) : (
           <div className="space-y-6">
             {Object.entries(groupedPlans).map(([subject, subjectPlans]) => (
-              <div key={subject} className="bg-white dark:bg-dark-card rounded-2xl shadow-lg border border-neutral-200 dark:border-dark-border overflow-hidden">
-                <div className="p-4 bg-gradient-to-r from-primary-600 to-accent-500 text-white">
-                  <h3 className="text-lg font-semibold">{subject}</h3>
-                  <p className="text-sm opacity-90">
-                    {subjectPlans.length} уроков • Группа: {subjectPlans[0]?.group_name}
-                  </p>
+              <div
+                key={subject}
+                className="bg-white dark:bg-dark-card rounded-2xl shadow-lg border border-neutral-200 dark:border-dark-border overflow-hidden"
+              >
+                <div className="p-4 bg-gradient-to-r from-primary-600 to-accent-500 text-white flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">{subject}</h3>
+                    <p className="text-sm opacity-90">
+                      {subjectPlans.length} уроков • Группа: {subjectPlans[0]?.group_name}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => downloadSubjectDocx(subject)}
+                    disabled={downloadingSubject === subject}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-white/15 hover:bg-white/25 disabled:opacity-60 transition-colors text-sm font-medium"
+                  >
+                    {downloadingSubject === subject ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4" />
+                    )}
+                    <span>Все в DOCX</span>
+                  </button>
                 </div>
-                
+
                 <div className="divide-y divide-neutral-200 dark:divide-dark-border">
                   {subjectPlans.map((plan) => (
                     <div key={plan.id} className="p-4">
-                      <div 
-                        className="flex items-center justify-between cursor-pointer"
+                      <div
+                        className="flex items-center justify-between cursor-pointer gap-4"
                         onClick={() => setExpandedPlan(expandedPlan === plan.id ? null : plan.id)}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
                             <span className="text-primary-600 font-bold">{plan.lesson_number}</span>
                           </div>
-                          <div>
-                            <h4 className="font-medium">{plan.topic || 'Без темы'}</h4>
+                          <div className="min-w-0">
+                            <h4 className="font-medium truncate">{plan.topic || 'Без темы'}</h4>
                             <p className="text-sm text-neutral-500">
-                              {plan.lesson_type} • {plan.lesson_date ? new Date(plan.lesson_date).toLocaleDateString('ru') : 'Дата не указана'}
+                              {plan.lesson_type || 'Тип не указан'}
+                              {' • '}
+                              {plan.lesson_date
+                                ? new Date(plan.lesson_date).toLocaleDateString('ru-RU')
+                                : 'Дата не указана'}
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+
+                        <div className="flex items-center gap-2 shrink-0">
                           <button
-                            onClick={(e) => { e.stopPropagation(); deletePlan(plan.id); }}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              downloadPlanDocx(plan.id);
+                            }}
+                            disabled={downloadingPlanId === plan.id}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 rounded-lg transition-colors disabled:opacity-60"
+                          >
+                            {downloadingPlanId === plan.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Download className="w-4 h-4" />
+                            )}
+                            <span className="hidden sm:inline">В DOCX</span>
+                          </button>
+
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              deletePlan(plan.id);
+                            }}
                             className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
+
                           {expandedPlan === plan.id ? (
                             <ChevronUp className="w-5 h-5 text-neutral-400" />
                           ) : (
@@ -326,40 +418,38 @@ export default function LessonPlanPage() {
 
                       {expandedPlan === plan.id && (
                         <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-dark-border">
-                          {/* Plan Details Table */}
                           <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                               <tbody className="divide-y divide-neutral-200 dark:divide-dark-border">
                                 <tr>
-                                  <td className="py-2 font-medium w-1/3">Мақсаты (Цели)</td>
-                                  <td className="py-2">{plan.goals || '-'}</td>
+                                  <td className="py-2 font-medium w-1/3">Мақсаты</td>
+                                  <td className="py-2 whitespace-pre-wrap">{plan.goals || '-'}</td>
                                 </tr>
                                 <tr>
-                                  <td className="py-2 font-medium">Міндеттері (Задачи)</td>
-                                  <td className="py-2">{plan.objectives || '-'}</td>
+                                  <td className="py-2 font-medium">Міндеттері</td>
+                                  <td className="py-2 whitespace-pre-wrap">{plan.objectives || '-'}</td>
                                 </tr>
                                 <tr>
                                   <td className="py-2 font-medium">Күтілетін нәтижелер</td>
-                                  <td className="py-2">{plan.expected_results || '-'}</td>
+                                  <td className="py-2 whitespace-pre-wrap">{plan.expected_results || '-'}</td>
                                 </tr>
                               </tbody>
                             </table>
                           </div>
 
-                          {/* Lesson Stages */}
                           <div className="mt-4">
                             <h5 className="font-semibold mb-3 flex items-center gap-2">
                               <Clock className="w-4 h-4" />
-                              Сабақтың барысы (Ход урока)
+                              Сабақтың барысы
                             </h5>
                             <div className="space-y-3">
-                              <StageItem title="Ұйымдастыру кезеңі (5 мин.)" content={plan.stage_organization} />
-                              <StageItem title="Білімді өзектендіру (15 мин.)" content={plan.stage_knowledge} />
-                              <StageItem title="Жаңа білім мен дағдыларды қалыптастыру (40 мин.)" content={plan.stage_new_skills} />
-                              <StageItem title="Өтілген тақырыпты бекіту (15 мин.)" content={plan.stage_consolidation} />
-                              <StageItem title="Бағалау (5 мин.)" content={plan.stage_assessment} />
-                              <StageItem title="Үй тапсырмасы (3 мин.)" content={plan.stage_homework} />
-                              <StageItem title="Рефлексия (7 мин.)" content={plan.stage_reflection} />
+                              {STAGES.map((stage) => (
+                                <StageItem
+                                  key={stage.key}
+                                  title={stage.title}
+                                  content={plan[stage.key]}
+                                />
+                              ))}
                             </div>
                           </div>
                         </div>
@@ -371,17 +461,6 @@ export default function LessonPlanPage() {
             ))}
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-function StageItem({ title, content }) {
-  return (
-    <div className="bg-neutral-50 dark:bg-dark-bg rounded-lg p-3">
-      <div className="font-medium text-primary-700 dark:text-primary-400 mb-1">{title}</div>
-      <div className="text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap">
-        {content || 'Не заполнено'}
       </div>
     </div>
   );

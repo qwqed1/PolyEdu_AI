@@ -8,7 +8,7 @@ export default function AIChatPage() {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [, setError] = useState(null);
   const [isListening, setIsListening] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
   const messagesEndRef = useRef(null);
@@ -36,14 +36,11 @@ export default function AIChatPage() {
 
       recognition.onresult = (event) => {
         let finalTranscript = '';
-        let interimTranscript = '';
         
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
             finalTranscript += transcript;
-          } else {
-            interimTranscript += transcript;
           }
         }
         
@@ -66,7 +63,7 @@ export default function AIChatPage() {
 
     return () => {
       if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch (e) { /* ignore */ }
+        try { recognitionRef.current.stop(); } catch { /* ignore */ }
       }
     };
   }, []);

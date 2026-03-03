@@ -26,6 +26,7 @@ import QuizResultsPage from './pages/dashboard/QuizResultsPage';
 import GameGeneratorPage from './pages/dashboard/GameGeneratorPage';
 import GroupSplitterPage from './pages/dashboard/GroupSplitterPage';
 import StudentGamesPage from './pages/dashboard/StudentGamesPage';
+import StudentReflectionsPage from './pages/dashboard/StudentReflectionsPage';
 import TeacherLobbyPage from './pages/dashboard/TeacherLobbyPage';
 
 function RoleDashboardPage() {
@@ -89,6 +90,7 @@ function App() {
 
                       {/* Student routes */}
                       <Route path="/games" element={<PrivateRoute roles={['student']}><StudentGamesPage /></PrivateRoute>} />
+                      <Route path="/reflections" element={<PrivateRoute roles={['student']}><StudentReflectionsPage /></PrivateRoute>} />
 
                       {/* Teacher routes */}
                       <Route path="/groups" element={<PrivateRoute roles={['teacher']}><GroupsPage /></PrivateRoute>} />

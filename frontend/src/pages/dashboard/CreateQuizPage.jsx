@@ -35,13 +35,14 @@ export default function CreateQuizPage() {
   // AI Generator State
   const [aiTopic, setAiTopic] = useState('');
   const [aiCount, setAiCount] = useState(5);
-  const [aiDifficulty, setAiDifficulty] = useState('medium');
+  const [aiDifficulty] = useState('medium');
 
   useEffect(() => {
     loadSubjects();
     if (isEditing) {
       loadQuiz();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const loadSubjects = async () => {

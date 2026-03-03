@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import Card from '../../components/common/Card';
-import { User, Building2, Briefcase, Mail, Bot } from 'lucide-react';
+import { User, Building2, Briefcase, Mail, Bot, Users, GraduationCap, Calendar, BarChart2, Book, Gamepad2 } from 'lucide-react';
 import statsService from '../../services/statsService';
 
 export default function TeacherDashboardPage() {
@@ -79,8 +79,8 @@ export default function TeacherDashboardPage() {
                     {loading ? '...' : stats.total_groups}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">👥</span>
+                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center text-primary-600 dark:text-primary-400">
+                  <span className="text-2xl"><Users className="w-6 h-6" /></span>
                 </div>
               </div>
             </Card>
@@ -93,8 +93,8 @@ export default function TeacherDashboardPage() {
                     {loading ? '...' : stats.total_students}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">🎓</span>
+                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center text-primary-600 dark:text-primary-400">
+                  <span className="text-2xl"><GraduationCap className="w-6 h-6" /></span>
                 </div>
               </div>
             </Card>
@@ -107,8 +107,8 @@ export default function TeacherDashboardPage() {
                     {loading ? '...' : stats.weekly_lessons}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">📅</span>
+                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center text-primary-600 dark:text-primary-400">
+                  <span className="text-2xl"><Calendar className="w-6 h-6" /></span>
                 </div>
               </div>
             </Card>
@@ -121,8 +121,8 @@ export default function TeacherDashboardPage() {
                     {loading ? '...' : (stats.average_grade || '-')}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">📊</span>
+                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center text-primary-600 dark:text-primary-400">
+                  <span className="text-2xl"><BarChart2 className="w-6 h-6" /></span>
                 </div>
               </div>
             </Card>
@@ -133,15 +133,15 @@ export default function TeacherDashboardPage() {
           <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-4">Быстрые действия</h3>
           <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
             <Link to="/groups" className="p-4 border-2 border-neutral-200 dark:border-dark-border rounded-lg hover:border-primary-600 dark:hover:border-primary-500 transition-default text-center group">
-              <div className="text-3xl mb-2">👥</div>
+              <div className="flex items-center justify-center mb-2 text-primary-600 dark:text-primary-400 group-hover:scale-110 transition-transform"><Users className="w-8 h-8" /></div>
               <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Группы</p>
             </Link>
             <Link to="/lesson-plans" className="p-4 border-2 border-neutral-200 dark:border-dark-border rounded-lg hover:border-primary-600 dark:hover:border-primary-500 transition-default text-center group">
-              <div className="text-3xl mb-2">📚</div>
+              <div className="flex items-center justify-center mb-2 text-primary-600 dark:text-primary-400 group-hover:scale-110 transition-transform"><Book className="w-8 h-8" /></div>
               <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Планы уроков</p>
             </Link>
             <Link to="/interactive-games" className="p-4 border-2 border-neutral-200 dark:border-dark-border rounded-lg hover:border-primary-600 dark:hover:border-primary-500 transition-default text-center group">
-              <div className="text-3xl mb-2">🎮</div>
+              <div className="flex items-center justify-center mb-2 text-primary-600 dark:text-primary-400 group-hover:scale-110 transition-transform"><Gamepad2 className="w-8 h-8" /></div>
               <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Игры</p>
             </Link>
             <Link to="/ai-chat" className="p-4 border-2 border-neutral-200 dark:border-dark-border rounded-lg hover:border-primary-600 dark:hover:border-primary-500 transition-default text-center group">

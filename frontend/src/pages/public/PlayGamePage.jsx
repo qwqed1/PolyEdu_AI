@@ -59,6 +59,7 @@ const PlayGamePage = () => {
     }, 1000);
 
     return () => clearInterval(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState, timeLeft]);
 
   const handleTimeUp = useCallback(() => {
@@ -73,6 +74,7 @@ const PlayGamePage = () => {
     }
     setShowCorrect(true);
     setTimeout(() => nextQuestion(), 2000);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAnswer, currentQuestionIndex, quiz]);
 
   // Начать игру

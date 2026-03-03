@@ -14,8 +14,8 @@ export default function TeacherLobbyPage() {
   
   const quizData = location.state?.quiz;
   
-  const [gameCode, setGameCode] = useState(quizData?.game_code || '');
-  const [quizTitle, setQuizTitle] = useState(quizData?.title || 'Викторина');
+  const [gameCode] = useState(quizData?.game_code || '');
+  const [quizTitle] = useState(quizData?.title || 'Викторина');
   const [players, setPlayers] = useState([]);
   const [gameStarted, setGameStarted] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -38,7 +38,7 @@ export default function TeacherLobbyPage() {
         })));
       }
       setLastUpdated(new Date());
-    } catch (err) {
+    } catch {
       // Тихо игнорируем — возможно ещё никто не сыграл
     } finally {
       if (showSpinner) setRefreshing(false);

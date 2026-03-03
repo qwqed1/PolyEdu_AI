@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Users, Plus, Trash2, Star, X, BookOpen, ChevronDown, ChevronRight, Layers, FileText, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trash2, Star, X, BookOpen, ChevronDown, ChevronRight, Layers, FileText, ClipboardList, Home, Code, Edit3 } from 'lucide-react';
 import groupService from '../../services/groupService';
 import studentService from '../../services/studentService';
 import gradeService from '../../services/gradeService';
@@ -40,14 +40,25 @@ export default function GroupDetailPage() {
   const [newStudentName, setNewStudentName] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState('');
-  const [gradeValue, setGradeValue] = useState('');
+  const [hwGrade, setHwGrade] = useState('');
+  const [practiceGrade, setPracticeGrade] = useState('');
+  const [groupGrade, setGroupGrade] = useState('');
+  const [notesGrade, setNotesGrade] = useState('');
+  
+  const [hwEnabled, setHwEnabled] = useState(true);
+  const [practiceEnabled, setPracticeEnabled] = useState(true);
+  const [groupEnabled, setGroupEnabled] = useState(true);
+  const [notesEnabled, setNotesEnabled] = useState(true);
+
   const [gradeTopic, setGradeTopic] = useState('');
+  const [gradeReflection, setGradeReflection] = useState('');
   const [gradeDate, setGradeDate] = useState(new Date().toISOString().split('T')[0]);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [studentGrades, setStudentGrades] = useState([]);
 
   useEffect(() => {
     loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const loadData = async () => {
@@ -92,7 +103,7 @@ export default function GroupDetailPage() {
       // Parse text: split by newlines, remove numbering like "1. " or "1 "
       const names = bulkStudentText
         .split('\n')
-        .map(line => line.replace(/^\s*\d+[.\)\s]+/, '').trim())
+        .map(line => line.replace(/^\s*\d+[.)\s]+/, '').trim())
         .filter(name => name.length > 0);
 
       if (names.length === 0) {
@@ -123,8 +134,17 @@ export default function GroupDetailPage() {
 
   const handleOpenGradeModal = (student) => {
     setSelectedStudent(student);
-    setGradeValue('');
+    setHwGrade('');
+    setPracticeGrade('');
+    setGroupGrade('');
+    setNotesGrade('');
+    
+    setHwEnabled(true);
+    setPracticeEnabled(true);
+    setGroupEnabled(true);
+    setNotesEnabled(true);
     setGradeTopic('');
+    setGradeReflection('');
     setGradeDate(new Date().toISOString().split('T')[0]);
     setSelectedSubject(subjects.length > 0 ? subjects[0].id : '');
     setShowAddGrade(true);
@@ -132,20 +152,37 @@ export default function GroupDetailPage() {
 
   const handleAddGrade = async (e) => {
     e.preventDefault();
-    if (!selectedStudent || !selectedSubject || gradeValue === '') return;
+    if (!selectedStudent || !selectedSubject) return;
     
-    const grade = parseInt(gradeValue);
-    if (isNaN(grade) || grade < 0 || grade > 100) {
-      alert('Оценка должна быть от 0 до 100');
+    const hw = hwEnabled ? (parseInt(hwGrade) || 0) : 0;
+    const practice = practiceEnabled ? (parseInt(practiceGrade) || 0) : 0;
+    const group = groupEnabled ? (parseInt(groupGrade) || 0) : 0;
+    const notes = notesEnabled ? (parseInt(notesGrade) || 0) : 0;
+    const totalGrade = hw + practice + group + notes;
+    
+    if (totalGrade < 0 || totalGrade > 100) {
+      alert('Суммарная оценка должна быть от 0 до 100');
       return;
+    }
+
+    // Build the topic text
+    const topicParts = [];
+    if (hwEnabled) topicParts.push(`ДЗ: ${hw}`);
+    if (practiceEnabled) topicParts.push(`Пр: ${practice}`);
+    if (groupEnabled) topicParts.push(`Гр: ${group}`);
+    if (notesEnabled) topicParts.push(`Консп: ${notes}`);
+
+    let detailedTopic = `${topicParts.join(', ')}${gradeTopic ? ` | Тема: ${gradeTopic}` : ''}`;
+    if (gradeReflection) {
+      detailedTopic += ` | Рефлексия: ${gradeReflection}`;
     }
 
     try {
       await gradeService.create(
         selectedStudent.id,
         parseInt(selectedSubject),
-        grade,
-        gradeTopic || null,
+        totalGrade,
+        detailedTopic,
         gradeDate
       );
       setShowAddGrade(false);
@@ -556,7 +593,7 @@ export default function GroupDetailPage() {
                 <input
                   type="text"
                   value={newStudentName}
-                  onChange={(e) => setNewStudentName(e.target.value)}
+                  onChange={(e) => setNewStudentName(e.target.value.replace(/[^A-Za-zА-Яа-яЁё\s-]/g, ''))}
                   placeholder="ФИО студента"
                   className="w-full px-4 py-2 border dark:border-gray-600 rounded-lg mb-4 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   required
@@ -615,18 +652,84 @@ export default function GroupDetailPage() {
                     </select>
                   </div>
                   
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className={`transition-opacity ${!hwEnabled ? 'opacity-50' : ''}`}>
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 cursor-pointer">
+                        <input type="checkbox" checked={hwEnabled} onChange={() => setHwEnabled(!hwEnabled)} className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300" />
+                        <Home className="w-4 h-4 text-primary-500" />
+                        Домашнее задание
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="30"
+                        disabled={!hwEnabled}
+                        value={hwGrade}
+                        onChange={(e) => setHwGrade(e.target.value)}
+                        placeholder="Макс: 30"
+                        className="w-full px-4 py-2 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 disabled:dark:bg-gray-800"
+                      />
+                    </div>
+                    <div className={`transition-opacity ${!practiceEnabled ? 'opacity-50' : ''}`}>
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 cursor-pointer">
+                        <input type="checkbox" checked={practiceEnabled} onChange={() => setPracticeEnabled(!practiceEnabled)} className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300" />
+                        <Code className="w-4 h-4 text-purple-500" />
+                        Практическая задача
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="30"
+                        disabled={!practiceEnabled}
+                        value={practiceGrade}
+                        onChange={(e) => setPracticeGrade(e.target.value)}
+                        placeholder="Макс: 30"
+                        className="w-full px-4 py-2 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 disabled:dark:bg-gray-800"
+                      />
+                    </div>
+                    <div className={`transition-opacity ${!groupEnabled ? 'opacity-50' : ''}`}>
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 cursor-pointer">
+                        <input type="checkbox" checked={groupEnabled} onChange={() => setGroupEnabled(!groupEnabled)} className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300" />
+                        <Users className="w-4 h-4 text-emerald-500" />
+                        Групповая работа
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="30"
+                        disabled={!groupEnabled}
+                        value={groupGrade}
+                        onChange={(e) => setGroupGrade(e.target.value)}
+                        placeholder="Макс: 30"
+                        className="w-full px-4 py-2 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 disabled:dark:bg-gray-800"
+                      />
+                    </div>
+                    <div className={`transition-opacity ${!notesEnabled ? 'opacity-50' : ''}`}>
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 cursor-pointer">
+                        <input type="checkbox" checked={notesEnabled} onChange={() => setNotesEnabled(!notesEnabled)} className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300" />
+                        <Edit3 className="w-4 h-4 text-amber-500" />
+                        Конспектирование
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="30"
+                        disabled={!notesEnabled}
+                        value={notesGrade}
+                        onChange={(e) => setNotesGrade(e.target.value)}
+                        placeholder="Макс: 30"
+                        className="w-full px-4 py-2 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 disabled:dark:bg-gray-800"
+                      />
+                    </div>
+                  </div>
+                  
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Оценка (0-100)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={gradeValue}
-                      onChange={(e) => setGradeValue(e.target.value)}
-                      placeholder="Например: 85"
-                      className="w-full px-4 py-2 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      required
-                    />
+                    <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border dark:border-gray-600">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Итоговый балл:</span>
+                      <span className={`text-lg font-bold ${((hwEnabled ? (parseInt(hwGrade)||0) : 0) + (practiceEnabled ? (parseInt(practiceGrade)||0) : 0) + (groupEnabled ? (parseInt(groupGrade)||0) : 0) + (notesEnabled ? (parseInt(notesGrade)||0) : 0)) > 100 ? 'text-red-500' : 'text-gray-900 dark:text-white'}`}>
+                        {(hwEnabled ? (parseInt(hwGrade)||0) : 0) + (practiceEnabled ? (parseInt(practiceGrade)||0) : 0) + (groupEnabled ? (parseInt(groupGrade)||0) : 0) + (notesEnabled ? (parseInt(notesGrade)||0) : 0)} / 100
+                      </span>
+                    </div>
                   </div>
                   
                   <div className="mb-4">
@@ -637,6 +740,17 @@ export default function GroupDetailPage() {
                       onChange={(e) => setGradeTopic(e.target.value)}
                       placeholder="Например: Контрольная работа №1"
                       className="w-full px-4 py-2 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Рефлексия по уроку (необязательно)</label>
+                    <textarea
+                      value={gradeReflection}
+                      onChange={(e) => setGradeReflection(e.target.value)}
+                      placeholder="Оставьте рефлексию студента о пройденном уроке..."
+                      className="w-full px-4 py-2 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+                      rows={2}
                     />
                   </div>
                   
@@ -866,7 +980,7 @@ export default function GroupDetailPage() {
                 />
                 <div className="text-xs text-gray-400 dark:text-gray-500 mb-4">
                   {bulkStudentText.trim()
-                    ? `Распознано имён: ${bulkStudentText.split('\n').map(l => l.replace(/^\s*\d+[.\)\s]+/, '').trim()).filter(n => n.length > 0).length}`
+                    ? `Распознано имён: ${bulkStudentText.split('\n').map(l => l.replace(/^\s*\d+[.)\s]+/, '').trim()).filter(n => n.length > 0).length}`
                     : 'Введите список студентов'}
                 </div>
                 <div className="flex gap-2">

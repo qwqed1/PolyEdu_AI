@@ -1,7 +1,7 @@
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import Card from '../../components/common/Card';
-import { User, Building2, Mail, Bot, BookOpen, Share2, Calendar, GraduationCap, Gamepad2 } from 'lucide-react';
+import { User, Building2, Mail, Bot, BookOpen, Share2, Calendar, GraduationCap, Gamepad2, NotebookPen } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -113,6 +113,20 @@ export default function DashboardPage() {
                   <div>
                     <h3 className="font-bold text-neutral-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">Расписание</h3>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Твои пары на неделю</p>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+
+            <Link to="/reflections">
+              <Card className="h-full hover:shadow-lg hover:border-orange-200 dark:hover:border-orange-500/30 transition-all cursor-pointer group">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <NotebookPen className="w-7 h-7 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-neutral-900 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">Рефлексия</h3>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Оставь отзыв по уроку</p>
                   </div>
                 </div>
               </Card>

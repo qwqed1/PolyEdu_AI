@@ -41,7 +41,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const { confirmPassword, ...registerData } = formData;
+      const { confirmPassword: _confirmPassword, ...registerData } = formData;
       await register({ ...registerData, role });
       navigate('/login', { state: { message: t.auth.registerSuccess } });
     } catch (err) {

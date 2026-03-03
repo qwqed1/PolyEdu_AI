@@ -30,6 +30,7 @@ const QuizResultsPage = () => {
 
   useEffect(() => {
     loadResults();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const handleClearResults = async () => {
@@ -39,6 +40,7 @@ const QuizResultsPage = () => {
       await quizService.clearQuizResults(id);
       loadResults();
     } catch (err) {
+      console.error(err);
       alert('Ошибка при очистке результатов');
     }
   };

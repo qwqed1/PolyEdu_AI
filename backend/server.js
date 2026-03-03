@@ -14,6 +14,7 @@ import quizRoutes from './src/routes/quiz.js';
 import moduleRoutes from './src/routes/modules.js';
 import aiGameRoutes from './src/routes/aiGames.js';
 import scheduleUploadRoutes from './src/routes/scheduleUpload.js';
+import reflectionRoutes from './src/routes/reflections.js';
 import pool from './src/config/db.js';
 import { QuizModel } from './src/models/Quiz.js';
 import { GameResultModel } from './src/models/GameResult.js';
@@ -46,6 +47,7 @@ app.use('/api/quiz', quizRoutes);
 app.use('/api', moduleRoutes);
 app.use('/api/ai-games', aiGameRoutes);
 app.use('/api/schedule-upload', scheduleUploadRoutes);
+app.use('/api/reflections', reflectionRoutes);
 
 // Health check with diagnostics
 app.get('/health', async (req, res) => {

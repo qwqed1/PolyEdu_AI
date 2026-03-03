@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bot, Send, User, Loader2, Gamepad2, Save, Trash2, Plus,
@@ -165,20 +165,20 @@ export default function GameGeneratorPage() {
     URL.revokeObjectURL(url);
   };
 
-  const renderIframeContent = () => {
+  const renderIframeContent = useCallback(() => {
     if (!iframeRef.current || !generatedHtml) return;
     const doc = iframeRef.current.contentDocument;
     doc.open();
     doc.write(generatedHtml);
     doc.close();
-  };
+  }, [generatedHtml]);
 
   useEffect(() => {
     if (showPreview && generatedHtml) {
       // Small delay to ensure iframe is mounted
       setTimeout(renderIframeContent, 100);
     }
-  }, [showPreview, generatedHtml]);
+  }, [showPreview, generatedHtml, renderIframeContent]);
 
   return (
     <div className="h-[calc(100vh-4rem)] bg-neutral-50 dark:bg-dark-bg flex">

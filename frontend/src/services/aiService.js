@@ -41,7 +41,7 @@ class AIService {
     try {
       const response = await axios.get(`${API_URL}/health`);
       return response.data;
-    } catch (error) {
+    } catch {
       return { success: false, status: 'unhealthy' };
     }
   }

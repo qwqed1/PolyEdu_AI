@@ -90,3 +90,13 @@ CREATE INDEX IF NOT EXISTS idx_grades_student_id ON grades(student_id);
 CREATE INDEX IF NOT EXISTS idx_schedules_user_id ON schedules(user_id);
 CREATE INDEX IF NOT EXISTS idx_modules_group_id ON modules(group_id);
 CREATE INDEX IF NOT EXISTS idx_module_subjects_module_id ON module_subjects(module_id);
+
+
+-- Student Reflections table
+CREATE TABLE IF NOT EXISTS student_reflections (
+  id SERIAL PRIMARY KEY,
+  student_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  lesson_topic VARCHAR(255) NOT NULL,
+  reflection_text TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
