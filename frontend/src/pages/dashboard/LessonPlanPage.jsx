@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   BookOpen,
@@ -7,6 +8,7 @@ import {
   Clock,
   Download,
   FileText,
+  Gamepad2,
   Loader2,
   Sparkles,
   Trash2,
@@ -47,8 +49,76 @@ function StageItem({ title, content }) {
   );
 }
 
+function buildLessonGenerationPrompt(formData, generationMode) {
+  const plansCount = generationMode === 'single'
+    ? 1
+    : Math.max(1, Math.ceil(Number(formData.semester_hours || 0) / 2));
+
+  const generationInstruction = generationMode === 'single'
+    ? 'Сгенерируй 1 план урока.'
+    : `Сгенерируй ${plansCount} планов уроков по казахстанскому стандарту.`;
+
+  return `${generationInstruction}
+
+Предмет/модуль: ${formData.subject_name}
+Дополнительный код модуля: ${formData.module_code || ''}
+Группа: ${formData.group_name}
+Курс: ${formData.course}
+Педагог: ${formData.teacher_name}
+Часы за семестр: ${formData.semester_hours}
+
+Сделай каждый план более подробным и с акцентом на интерактивность.
+В каждом уроке обязательно распиши:
+- как провести урок интерактивнее;
+- какие игровые активности, мини-игры или командные задания использовать;
+- во что именно играть с группой на этапе объяснения, закрепления и рефлексии;
+- понятные действия преподавателя по каждому этапу.
+
+Для каждого урока используй структуру:
+1. Ұйымдастыру кезеңі (5 мин.)
+2. Білімді өзектендіру (15 мин.)
+3. Жаңа білім мен дағдыларды қалыптастыру (40 мин.)
+4. Өтілген тақырыпты бекіту (15 мин.)
+5. Бағалау (5 мин.)
+6. Үй тапсырмасы (3 мин.)
+7. Рефлексия (7 мин.)
+
+Ответ дай только в виде JSON массива без пояснений:
+[{"lesson_number":1,"topic":"...","lesson_type":"...","goals":"...","objectives":"...","expected_results":"...","resources_methods":"...","resources_technical":"...","stage_organization":"...","stage_knowledge":"...","stage_new_skills":"...","stage_consolidation":"...","stage_assessment":"...","stage_homework":"...","stage_reflection":"..."}]`;
+}
+
+function buildGamePrompt(plan) {
+  return `Создай интерактивную учебную игру по этому плану урока.
+
+Предмет: ${plan.subject_name || ''}
+Группа: ${plan.group_name || ''}
+Урок №${plan.lesson_number || ''}
+Тема: ${plan.topic || ''}
+Тип урока: ${plan.lesson_type || ''}
+
+Цели урока:
+${plan.goals || '-'}
+
+Задачи урока:
+${plan.objectives || '-'}
+
+Ожидаемые результаты:
+${plan.expected_results || '-'}
+
+Используй содержание этого плана:
+- Организационный этап: ${plan.stage_organization || '-'}
+- Актуализация знаний: ${plan.stage_knowledge || '-'}
+- Новая тема и практика: ${plan.stage_new_skills || '-'}
+- Закрепление: ${plan.stage_consolidation || '-'}
+- Оценивание: ${plan.stage_assessment || '-'}
+- Рефлексия: ${plan.stage_reflection || '-'}
+
+Сделай игру именно под этот урок и под игровые активности, которые подходят к этому плану.`;
+}
+
 export default function LessonPlanPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -56,6 +126,7 @@ export default function LessonPlanPage() {
   const [expandedPlan, setExpandedPlan] = useState(null);
   const [downloadingPlanId, setDownloadingPlanId] = useState(null);
   const [downloadingSubject, setDownloadingSubject] = useState('');
+  const [generationMode, setGenerationMode] = useState('semester');
   const [formData, setFormData] = useState({
     subject_name: '',
     module_code: '',
@@ -100,27 +171,7 @@ export default function LessonPlanPage() {
     setError('');
 
     try {
-      const totalLessons = Math.ceil(formData.semester_hours / 2);
-      const prompt = `Сгенерируй ${totalLessons} планов уроков по казахстанскому стандарту.
-
-Модуль/пән атауы: ${formData.subject_name}
-Дополнительный код модуля: ${formData.module_code || ''}
-Группа: ${formData.group_name}
-Курс: ${formData.course}
-Педагог: ${formData.teacher_name}
-
-Для каждого урока используй структуру:
-1. Ұйымдастыру кезеңі (5 мин.)
-2. Білімді өзектендіру (15 мин.)
-3. Жаңа білім мен дағдыларды қалыптастыру (40 мин.)
-4. Өтілген тақырыпты бекіту (15 мин.)
-5. Бағалау (5 мин.)
-6. Үй тапсырмасы (3 мин.)
-7. Рефлексия (7 мин.)
-
-Ответ дай только в виде JSON массива без пояснений:
-[{"lesson_number":1,"topic":"...","lesson_type":"...","goals":"...","objectives":"...","expected_results":"...","resources_methods":"...","resources_technical":"...","stage_organization":"...","stage_knowledge":"...","stage_new_skills":"...","stage_consolidation":"...","stage_assessment":"...","stage_homework":"...","stage_reflection":"..."}]`;
-
+      const prompt = buildLessonGenerationPrompt(formData, generationMode);
       const result = await lessonPlanService.generate(prompt);
 
       if (!result.success || !result.plans || result.plans.length === 0) {
@@ -191,6 +242,14 @@ export default function LessonPlanPage() {
     }
   };
 
+  const openGameGenerator = (plan) => {
+    const prompt = buildGamePrompt(plan);
+    const title = `Игра к уроку ${plan.lesson_number || ''}`;
+    navigate(
+      `/interactive-games/ai-generator?prompt=${encodeURIComponent(prompt)}&title=${encodeURIComponent(title)}`,
+    );
+  };
+
   const groupedPlans = plans.reduce((acc, plan) => {
     const key = plan.subject_name || 'Без предмета';
     if (!acc[key]) {
@@ -225,7 +284,7 @@ export default function LessonPlanPage() {
           <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-600" />
             <span className="text-red-700 dark:text-red-400">{error}</span>
-            <button onClick={() => setError('')} className="ml-auto">
+            <button onClick={() => setError('')} className="ml-auto" type="button">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -237,9 +296,34 @@ export default function LessonPlanPage() {
             Генерация планов уроков
           </h2>
 
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => setGenerationMode('semester')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                generationMode === 'semester'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-neutral-100 text-neutral-700 dark:bg-dark-bg dark:text-neutral-300'
+              }`}
+            >
+              По часам
+            </button>
+            <button
+              type="button"
+              onClick={() => setGenerationMode('single')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                generationMode === 'single'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-neutral-100 text-neutral-700 dark:bg-dark-bg dark:text-neutral-300'
+              }`}
+            >
+              Один урок
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Модуль/Пән атауы *</label>
+              <label className="block text-sm font-medium mb-1">Модуль/Предмет *</label>
               <input
                 type="text"
                 value={formData.subject_name}
@@ -296,12 +380,15 @@ export default function LessonPlanPage() {
                 className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-dark-border bg-white dark:bg-dark-bg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
               <p className="text-xs text-neutral-500 mt-1">
-                ≈ {Math.ceil(formData.semester_hours / 2)} уроков
+                {generationMode === 'single'
+                  ? 'Будет создан 1 урок'
+                  : `≈ ${Math.ceil(formData.semester_hours / 2)} уроков`}
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={generatePlans}
             disabled={generating}
             className="w-full md:w-auto mt-4 px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-lg rounded-xl font-semibold flex items-center justify-center gap-3 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-lg"
@@ -345,6 +432,7 @@ export default function LessonPlanPage() {
                     </p>
                   </div>
                   <button
+                    type="button"
                     onClick={() => downloadSubjectDocx(subject)}
                     disabled={downloadingSubject === subject}
                     className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-white/15 hover:bg-white/25 disabled:opacity-60 transition-colors text-sm font-medium"
@@ -383,6 +471,19 @@ export default function LessonPlanPage() {
 
                         <div className="flex items-center gap-2 shrink-0">
                           <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openGameGenerator(plan);
+                            }}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-violet-600 bg-violet-50 hover:bg-violet-100 dark:text-violet-300 dark:bg-violet-900/20 dark:hover:bg-violet-900/40 rounded-lg transition-colors"
+                          >
+                            <Gamepad2 className="w-4 h-4" />
+                            <span className="hidden sm:inline">Игра</span>
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={(event) => {
                               event.stopPropagation();
                               downloadPlanDocx(plan.id);
@@ -399,6 +500,7 @@ export default function LessonPlanPage() {
                           </button>
 
                           <button
+                            type="button"
                             onClick={(event) => {
                               event.stopPropagation();
                               deletePlan(plan.id);
