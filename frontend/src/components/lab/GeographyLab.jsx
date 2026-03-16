@@ -43,7 +43,9 @@ export default function GeographyLab({ language, selectedTool }) {
   const [layers, setLayers] = useState({ graticules: true, atmosphere: true, routes: true });
 
   useEffect(() => {
-    if (!globeContainerRef.current) {
+    const containerEl = globeContainerRef.current;
+
+    if (!containerEl) {
       return undefined;
     }
 
@@ -63,9 +65,9 @@ export default function GeographyLab({ language, selectedTool }) {
     let destroyed = false;
 
     try {
-      const globe = new Globe(globeContainerRef.current, { animateIn: true, waitForGlobeReady: true });
+      const globe = new Globe(containerEl, { animateIn: true, waitForGlobeReady: true });
       globe
-        .width(globeContainerRef.current.clientWidth)
+        .width(containerEl.clientWidth)
         .height(480)
         .backgroundColor('rgba(0,0,0,0)')
         .globeTileEngineUrl((x, y, l) => `https://tile.openstreetmap.org/${l}/${x}/${y}.png`)
@@ -100,8 +102,8 @@ export default function GeographyLab({ language, selectedTool }) {
     }
 
     const handleResize = () => {
-      if (globeInstanceRef.current && globeContainerRef.current) {
-        globeInstanceRef.current.width(globeContainerRef.current.clientWidth);
+      if (globeInstanceRef.current && containerEl) {
+        globeInstanceRef.current.width(containerEl.clientWidth);
       }
     };
 
@@ -112,7 +114,9 @@ export default function GeographyLab({ language, selectedTool }) {
       window.removeEventListener('resize', handleResize);
       if (globeInstanceRef.current) {
         globeInstanceRef.current.pauseAnimation();
-        globeContainerRef.current.innerHTML = '';
+        if (containerEl) {
+          containerEl.innerHTML = '';
+        }
         globeInstanceRef.current = null;
       }
     };
