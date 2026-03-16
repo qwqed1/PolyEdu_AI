@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Bot, Send, User, Loader2, AlertCircle, Mic, MicOff } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import aiService from '../../services/aiService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -15,6 +16,7 @@ export default function AIChatPage() {
   const recognitionRef = useRef(null);
   const { user } = useAuth();
   const { language, t } = useLanguage();
+  const [searchParams] = useSearchParams();
 
   // Автоматическая прокрутка к последнему сообщению
   const scrollToBottom = () => {
@@ -103,6 +105,15 @@ export default function AIChatPage() {
       }
     ]);
   }, [user, t]);
+
+  useEffect(() => {
+    const presetPrompt = searchParams.get('prompt');
+    if (!presetPrompt) {
+      return;
+    }
+
+    setInputMessage(presetPrompt);
+  }, [searchParams]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();

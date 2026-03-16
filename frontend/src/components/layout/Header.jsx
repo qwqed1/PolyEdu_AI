@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { 
   Sun, Moon, Menu, X, User, LogOut, ChevronDown, BookOpen, 
-  GraduationCap, Award, Share2, Calendar, Globe, Gamepad2, 
-  BarChart3, Bot, Users, FileText, Shuffle
+  GraduationCap, Award, Share2, Calendar, Globe, Gamepad2,
+  BarChart3, Bot, Users, FileText, Shuffle, FlaskConical
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -86,6 +86,14 @@ export default function Header() {
                         >
                           <Gamepad2 className="w-4 h-4 text-emerald-500" />
                           {t.nav.games}
+                        </Link>
+                        <Link 
+                          to="/lab" 
+                          onClick={() => setToolsDropdownOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-default"
+                        >
+                          <FlaskConical className="w-4 h-4 text-orange-500" />
+                          {t.nav.lab}
                         </Link>
                         <Link 
                           to="/statistics" 
@@ -217,6 +225,10 @@ export default function Header() {
                     <Link to="/interactive-games" className="px-3 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-default flex items-center gap-2">
                       <Gamepad2 className="w-4 h-4" />
                       {t.nav.games}
+                    </Link>
+                    <Link to="/lab" className="px-3 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-default flex items-center gap-2">
+                      <FlaskConical className="w-4 h-4" />
+                      {t.nav.lab}
                     </Link>
                     <Link to="/statistics" className="px-3 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-default flex items-center gap-2">
                       <BarChart3 className="w-4 h-4" />

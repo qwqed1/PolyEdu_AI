@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   BookOpen,
@@ -119,6 +119,7 @@ ${plan.expected_results || '-'}
 export default function LessonPlanPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -139,6 +140,21 @@ export default function LessonPlanPage() {
   useEffect(() => {
     loadPlans();
   }, []);
+
+  useEffect(() => {
+    const subject = searchParams.get('subject');
+    const topic = searchParams.get('topic');
+
+    if (!subject && !topic) {
+      return;
+    }
+
+    setFormData((current) => ({
+      ...current,
+      subject_name: subject || current.subject_name,
+      module_code: topic || current.module_code,
+    }));
+  }, [searchParams]);
 
   const loadPlans = async () => {
     try {

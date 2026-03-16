@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -28,6 +29,7 @@ import GroupSplitterPage from './pages/dashboard/GroupSplitterPage';
 import StudentGamesPage from './pages/dashboard/StudentGamesPage';
 import StudentReflectionsPage from './pages/dashboard/StudentReflectionsPage';
 import TeacherLobbyPage from './pages/dashboard/TeacherLobbyPage';
+const LabPage = lazy(() => import('./pages/dashboard/LabPage'));
 
 function RoleDashboardPage() {
   const { user } = useAuth();
@@ -63,7 +65,14 @@ function App() {
       <LanguageProvider>
       <ThemeProvider>
         <AuthProvider>
-          <Routes>
+          <Suspense
+            fallback={
+              <div className="flex min-h-screen items-center justify-center">
+                <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary-600"></div>
+              </div>
+            }
+          >
+            <Routes>
             {/* Игровые страницы (без Header/Footer) */}
             <Route path="/join" element={<JoinGamePage />} />
             <Route path="/play/:code" element={<PlayGamePage />} />
@@ -104,6 +113,8 @@ function App() {
                       <Route path="/interactive-games/:id/results" element={<PrivateRoute roles={['teacher']}><QuizResultsPage /></PrivateRoute>} />
                       <Route path="/interactive-games/:id/lobby" element={<PrivateRoute roles={['teacher']}><TeacherLobbyPage /></PrivateRoute>} />
                       <Route path="/group-splitter" element={<PrivateRoute roles={['teacher']}><GroupSplitterPage /></PrivateRoute>} />
+                      <Route path="/lab" element={<PrivateRoute roles={['teacher']}><LabPage /></PrivateRoute>} />
+                      <Route path="/lab/:subjectKey" element={<PrivateRoute roles={['teacher']}><LabPage /></PrivateRoute>} />
 
                       <Route path="/profile" element={<PrivateRoute><RoleDashboardPage /></PrivateRoute>} />
 
@@ -116,7 +127,8 @@ function App() {
                 </div>
               }
             />
-          </Routes>
+            </Routes>
+          </Suspense>
         </AuthProvider>
       </ThemeProvider>
       </LanguageProvider>
@@ -125,4 +137,3 @@ function App() {
 }
 
 export default App;
-
