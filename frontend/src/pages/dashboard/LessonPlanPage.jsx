@@ -116,6 +116,22 @@ ${plan.expected_results || '-'}
 Сделай игру именно под этот урок и под игровые активности, которые подходят к этому плану.`;
 }
 
+function formatGenerationError(err) {
+  const rawMessage = err?.response?.data?.error || err?.message || 'Ошибка генерации планов';
+  const normalized = rawMessage.toLowerCase();
+
+  if (
+    normalized.includes('free-models-per-day') ||
+    normalized.includes('rate limit') ||
+    normalized.includes('quota') ||
+    normalized.includes('add 10 credits')
+  ) {
+    return 'Лимит бесплатных AI-запросов исчерпан. Пополните баланс в OpenRouter (минимум на 10 кредитов) или дождитесь сброса суточного лимита.';
+  }
+
+  return rawMessage;
+}
+
 export default function LessonPlanPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -210,7 +226,7 @@ export default function LessonPlanPage() {
       await loadPlans();
     } catch (err) {
       console.error('Generate error:', err);
-      setError(err.response?.data?.error || err.message || 'Ошибка генерации планов');
+      setError(formatGenerationError(err));
     } finally {
       setGenerating(false);
     }

@@ -69,6 +69,10 @@ class OpenRouterService {
         const errMsg = error.response?.data?.error?.message || error.message || '';
         console.warn(`[OpenRouter] chatText попытка ${attempt} неудачна: ${errMsg}`);
 
+        if (this._isNonRetryableError(error)) {
+          this._handleError(error, 'chatText');
+        }
+
         // Если модель не поддерживает tools — повтор без них
         if (tools && tools.length > 0 && attempt === 1) {
           console.warn(`[OpenRouter] Повторяю без tools...`);
@@ -112,6 +116,10 @@ class OpenRouterService {
       } catch (error) {
         const errMsg = error.response?.data?.error?.message || error.message || '';
         console.warn(`[OpenRouter] chatCoder попытка ${attempt} неудачна: ${errMsg}`);
+
+        if (this._isNonRetryableError(error)) {
+          this._handleError(error, 'chatCoder');
+        }
 
         if (attempt < MAX_RETRIES) {
           const delay = attempt * 2000; // 2с, 4с
@@ -161,6 +169,10 @@ class OpenRouterService {
       } catch (error) {
         const errMsg = error.response?.data?.error?.message || error.message || '';
         console.warn(`[OpenRouter] chatLesson попытка ${attempt} неудачна: ${errMsg}`);
+
+        if (this._isNonRetryableError(error)) {
+          this._handleError(error, 'chatLesson');
+        }
 
         if (attempt < MAX_RETRIES) {
           const delay = attempt * 2000;
@@ -213,8 +225,46 @@ class OpenRouterService {
     console.error(`[OpenRouter] Ошибка в ${method}: HTTP ${status}`);
     console.error(`[OpenRouter] Ответ:`, JSON.stringify(data));
 
-    // Пробрасываем реальное сообщение от API — без подмены
-    throw new Error(realMessage);
+    const providerError = new Error(realMessage);
+    providerError.status = this._resolveHttpStatus(status, realMessage);
+    providerError.providerStatus = status;
+    throw providerError;
+  }
+
+  _isNonRetryableError(error) {
+    const status = error.response?.status;
+    const message = (error.response?.data?.error?.message || error.message || '').toLowerCase();
+
+    if (status === 401 || status === 403 || status === 429) {
+      return true;
+    }
+
+    return (
+      message.includes('rate limit') ||
+      message.includes('free-models-per-day') ||
+      message.includes('add 10 credits') ||
+      message.includes('insufficient credits') ||
+      message.includes('quota')
+    );
+  }
+
+  _resolveHttpStatus(providerStatus, message) {
+    const normalized = (message || '').toLowerCase();
+    if (
+      providerStatus === 429 ||
+      normalized.includes('rate limit') ||
+      normalized.includes('free-models-per-day') ||
+      normalized.includes('quota') ||
+      normalized.includes('credits')
+    ) {
+      return 429;
+    }
+
+    if (providerStatus === 401 || providerStatus === 403) {
+      return 502;
+    }
+
+    return 500;
   }
 }
 

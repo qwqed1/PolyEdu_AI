@@ -109,7 +109,7 @@ export const lessonPlansController = {
       res.json({ success: true, plans: allPlans });
     } catch (error) {
       console.error('[LessonPlans] Generate error:', error.message);
-      res.status(500).json({ error: error.message || 'Ошибка генерации' });
+      res.status(error.status || 500).json({ error: error.message || 'Ошибка генерации' });
     }
   },
 
