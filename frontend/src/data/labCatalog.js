@@ -28,7 +28,7 @@
  * @property {LabPromptPreset[]} promptPresets
  * @property {MiniTaskConfig[]} miniTaskTemplates
  * @property {'deep' | 'catalog'} status
- * @property {'geography' | 'math' | 'language' | 'generic'} adapterKey
+ * @property {'geography' | 'math' | 'language' | 'chemistry' | 'generic'} adapterKey
  * @property {string} summaryRu
  * @property {string} summaryKk
  * @property {string[]} teacherMovesRu
@@ -104,9 +104,38 @@ const languageTasks = [
   task('speaking', 'Устная практика', 'Ауызша практика', 'Скажите ответ вслух и сравните с образцом.', 'Жауапты дауыстап айтып, үлгімен салыстырыңыз.', 'Запишите 30-секундный ответ и попросите AI-фидбек.', '30 секундтық жауап жазып, AI кері байланысын сұраңыз.', 'Есть безопасная speaking-практика.', 'Қауіпсіз speaking-практика бар.'),
 ];
 
+adapterMoves.chemistry = {
+  ru: ['Откройте элемент в таблице.', 'Соберите 3D-модель вещества.', 'Сравните реактивы и продукты.'],
+  kk: ['Кестеден элементті ашыңыз.', 'Заттың 3D моделін жинаңыз.', 'Реактивтер мен өнімдерді салыстырыңыз.'],
+};
+
+const chemistryTasks = [
+  task('periodic-explorer', 'Исследование элемента', 'Элементті зерттеу', 'Найдите элемент в таблице и объясните его свойства.', 'Кестеден элементті тауып, қасиетін түсіндіріңіз.', 'Свяжите положение в таблице с электронными оболочками.', 'Кестедегі орнын электрон қабаттарымен байланыстырыңыз.', 'Есть готовый разбор элемента.', 'Элемент бойынша дайын талдау бар.'),
+  task('molecule-3d', '3D молекула', '3D молекула', 'Откройте вещество и разберите его формулу.', 'Затты ашып, формуласын талдаңыз.', 'Найдите связи, формулу и 3D-форму.', 'Байланыстарын, формуласын және 3D пішінін табыңыз.', 'Формула и модель показаны вместе.', 'Формула мен модель бірге көрсетіледі.'),
+  task('reaction-lab', 'Разбор реакции', 'Реакцияны талдау', 'Сравните два вещества и посмотрите продукты.', 'Екі затты салыстырып, өнімдерін көріңіз.', 'Опишите условия, тип реакции и наблюдаемый эффект.', 'Шартын, реакция типін және байқалатын әсерін сипаттаңыз.', 'Есть учебный разбор реакции.', 'Реакция бойынша оқу талдауы бар.'),
+];
+
+function chemistryPreset(id, labelRu, labelKk, subjectRu) {
+  return {
+    id,
+    label: text(labelRu, labelKk),
+    aiPrompt: `Помоги подготовить урок по "${subjectRu}": выбери вещество, объясни его строение, свойства и 1-2 типовые реакции для школы.`,
+    gamePrompt: `Создай короткую HTML-игру по "${subjectRu}" на тему элементов, формул и типовых реакций с понятным фидбеком.`,
+    lessonTopic: `${subjectRu}: элементы, молекулы и реакции`,
+  };
+}
+
 function subject(config) {
-  const moves = adapterMoves[config.adapterKey];
-  const taskSet = config.adapterKey === 'geography' ? geographyTasks : config.adapterKey === 'math' ? mathTasks : config.adapterKey === 'language' ? languageTasks : genericTasks;
+  const moves = adapterMoves[config.adapterKey] || adapterMoves.generic;
+  const taskSet = config.adapterKey === 'geography'
+    ? geographyTasks
+    : config.adapterKey === 'math'
+      ? mathTasks
+      : config.adapterKey === 'language'
+        ? languageTasks
+        : config.adapterKey === 'chemistry'
+          ? chemistryTasks
+          : genericTasks;
 
   return {
     ...config,
@@ -141,6 +170,25 @@ export const labCatalog = [
   subject({ key: 'basic-military-training', titleRu: 'НВТП / Начальная военная и технологическая подготовка', titleKk: 'Алғашқы әскери және технологиялық дайындық', subjectFamily: 'civic', grades: grades.high, curriculumAliases: ['НВТП', 'АӘТД'], enabledTools: ['overview', 'ai', 'tasks'], status: 'catalog', adapterKey: 'generic', summaryRu: 'Алгоритмы действий, дисциплина и безопасность.', summaryKk: 'Әрекет алгоритмдері, тәртіп және қауіпсіздік.' }),
   subject({ key: 'global-competencies', titleRu: 'Глобальные компетенции', titleKk: 'Жаһандық құзыреттер', subjectFamily: 'civic', grades: [...grades.middle, ...grades.high], curriculumAliases: ['Soft skills', 'Глобальные навыки'], enabledTools: ['overview', 'ai', 'tasks'], status: 'catalog', adapterKey: 'generic', summaryRu: 'Коммуникация, аргументация и работа с кейсами.', summaryKk: 'Коммуникация, аргументация және кейстермен жұмыс.' }),
 ];
+
+const chemistrySubject = labCatalog.find((subject) => subject.key === 'chemistry');
+
+if (chemistrySubject) {
+  Object.assign(chemistrySubject, {
+    enabledTools: ['periodic', 'molecule', 'reactions'],
+    promptPresets: [
+      chemistryPreset('chemistry-core', '3D молекулы и реакции', '3D молекулалар мен реакциялар', chemistrySubject.titleRu),
+      chemistryPreset('chemistry-lab', 'Учебная химическая лаборатория', 'Оқу химиялық зертхана', chemistrySubject.titleRu),
+    ],
+    miniTaskTemplates: chemistryTasks,
+    status: 'deep',
+    adapterKey: 'chemistry',
+    summaryRu: 'Таблица Менделеева, 3D-молекулы и школьный каталог реакций в одном workspace.',
+    summaryKk: 'Бір workspace ішінде Менделеев кестесі, 3D молекулалар және мектептік реакция каталогы.',
+    teacherMovesRu: adapterMoves.chemistry.ru,
+    teacherMovesKk: adapterMoves.chemistry.kk,
+  });
+}
 
 export const labFamilyLabels = {
   stem: text('STEM', 'STEM'),

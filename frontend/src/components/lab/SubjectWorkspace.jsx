@@ -26,6 +26,7 @@ export const labToolRegistry = {
   geography: { key: 'geography', loader: () => import('./GeographyLab') },
   math: { key: 'math', loader: () => import('./MathLab') },
   language: { key: 'language', loader: () => import('./LanguageLab') },
+  chemistry: { key: 'chemistry', loader: () => import('./ChemistryLab') },
   generic: { key: 'generic', loader: () => import('./GenericSubjectLab') },
 };
 

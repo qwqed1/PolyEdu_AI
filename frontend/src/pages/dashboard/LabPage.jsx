@@ -20,6 +20,10 @@ const TOOL_LABELS = {
   tasks: { ru: 'Задачи', kk: 'Тапсырмалар' },
 };
 
+TOOL_LABELS.periodic = { ru: 'Таблица Менделеева', kk: 'Менделеев кестесі' };
+TOOL_LABELS.molecule = { ru: '3D молекулы', kk: '3D молекулалар' };
+TOOL_LABELS.reactions = { ru: 'Реакции', kk: 'Реакциялар' };
+
 const LAST_SUBJECT_KEY = 'lab:last-subject';
 
 function getStoredTool(subjectKey, fallbackTool) {

@@ -10,11 +10,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@chemistry/elements": "^3.1.1",
     "@excalidraw/excalidraw": "^0.18.0",
+    "3dmol": "^2.5.4",
     "axios": "^1.13.2",
+    "chemical-elements": "^2.2.2",
     "globe.gl": "^2.45.1",
     "lucide-react": "^0.562.0",
     "mathlive": "^0.109.0",
+    "openchemlib": "^9.21.0",
+    "periodic-table-data": "^1.1.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.12.0",
