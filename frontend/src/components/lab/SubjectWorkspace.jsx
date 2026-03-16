@@ -1,7 +1,5 @@
-import GenericSubjectLab from './GenericSubjectLab';
-import GeographyLab from './GeographyLab';
-import LanguageLab from './LanguageLab';
-import MathLab from './MathLab';
+import { AlertCircle, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 /**
  * @typedef {Object} ToolAdapterProps
@@ -13,7 +11,7 @@ import MathLab from './MathLab';
 /**
  * @typedef {Object} LabToolConfig
  * @property {string} key
- * @property {React.ComponentType<ToolAdapterProps>} component
+ * @property {() => Promise<{ default: React.ComponentType<ToolAdapterProps> }>} loader
  */
 
 /**
@@ -25,15 +23,93 @@ import MathLab from './MathLab';
 
 /** @type {Record<string, LabToolConfig>} */
 export const labToolRegistry = {
-  geography: { key: 'geography', component: GeographyLab },
-  math: { key: 'math', component: MathLab },
-  language: { key: 'language', component: LanguageLab },
-  generic: { key: 'generic', component: GenericSubjectLab },
+  geography: { key: 'geography', loader: () => import('./GeographyLab') },
+  math: { key: 'math', loader: () => import('./MathLab') },
+  language: { key: 'language', loader: () => import('./LanguageLab') },
+  generic: { key: 'generic', loader: () => import('./GenericSubjectLab') },
 };
 
+function LoadingState({ language }) {
+  return (
+    <div className="rounded-3xl border border-neutral-200 bg-white p-8 shadow-sm dark:border-dark-border dark:bg-dark-surface">
+      <div className="flex items-center justify-center gap-3 text-neutral-600 dark:text-neutral-300">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span>{language === 'kk' ? 'Модуль жүктелуде...' : 'Модуль загружается...'}</span>
+      </div>
+    </div>
+  );
+}
+
+function ErrorState({ language, error }) {
+  return (
+    <div className="rounded-3xl border border-red-200 bg-white p-8 shadow-sm dark:border-red-900 dark:bg-dark-surface">
+      <div className="flex items-start gap-3">
+        <AlertCircle className="mt-0.5 h-5 w-5 text-red-500" />
+        <div>
+          <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
+            {language === 'kk' ? 'Лаборатория модулі жүктелмеді' : 'Модуль лаборатории не загрузился'}
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-neutral-600 dark:text-neutral-300">
+            {language === 'kk'
+              ? 'Бұл бөлімді ашу кезінде қате шықты. Бет енді толық ақ экранға құламайды, ал қалған лаборатория бөлімдері ашыла береді.'
+              : 'При открытии этого раздела произошла ошибка. Страница больше не падает целиком в белый экран, а остальные разделы лаборатории продолжают работать.'}
+          </p>
+          {error ? (
+            <p className="mt-3 rounded-2xl bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/30 dark:text-red-200">
+              {String(error)}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SubjectWorkspace({ subject, language, selectedTool }) {
-  const adapter = labToolRegistry[subject.adapterKey] || labToolRegistry.generic;
-  const Component = adapter.component;
+  const [Component, setComponent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    const adapter = labToolRegistry[subject.adapterKey] || labToolRegistry.generic;
+
+    setLoading(true);
+    setError('');
+    setComponent(null);
+
+    adapter.loader()
+      .then((module) => {
+        if (cancelled) {
+          return;
+        }
+        setComponent(() => module.default);
+      })
+      .catch((loadError) => {
+        if (cancelled) {
+          return;
+        }
+        console.error(`Failed to load lab adapter "${adapter.key}"`, loadError);
+        setError(loadError?.message || 'Unknown adapter error');
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [subject.adapterKey]);
+
+  if (loading) {
+    return <LoadingState language={language} />;
+  }
+
+  if (error || !Component) {
+    return <ErrorState language={language} error={error} />;
+  }
 
   return <Component subject={subject} language={language} selectedTool={selectedTool} />;
 }
