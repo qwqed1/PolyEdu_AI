@@ -1,5 +1,5 @@
 import { AlertCircle, Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Component, useEffect, useState } from 'react';
 
 /**
  * @typedef {Object} ToolAdapterProps
@@ -65,6 +65,38 @@ function ErrorState({ language, error }) {
   );
 }
 
+class LabAdapterBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, message: '' };
+  }
+
+  static getDerivedStateFromError(error) {
+    return {
+      hasError: true,
+      message: error?.message || 'Unknown adapter render error',
+    };
+  }
+
+  componentDidCatch(error) {
+    console.error('Lab adapter render failed', error);
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false, message: '' });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <ErrorState language={this.props.language} error={this.state.message} />;
+    }
+
+    return this.props.children;
+  }
+}
+
 export default function SubjectWorkspace({ subject, language, selectedTool }) {
   const [Component, setComponent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -111,5 +143,9 @@ export default function SubjectWorkspace({ subject, language, selectedTool }) {
     return <ErrorState language={language} error={error} />;
   }
 
-  return <Component subject={subject} language={language} selectedTool={selectedTool} />;
+  return (
+    <LabAdapterBoundary language={language} resetKey={`${subject.key}:${selectedTool}`}>
+      <Component subject={subject} language={language} selectedTool={selectedTool} />
+    </LabAdapterBoundary>
+  );
 }
