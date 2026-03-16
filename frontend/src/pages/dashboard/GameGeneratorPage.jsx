@@ -1,37 +1,45 @@
-﻿import { useState, useEffect, useRef, useCallback } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  Bot, Send, User, Loader2, Gamepad2, Save, Trash2, Plus,
-  Play, X, Maximize2, Minimize2, ArrowLeft, Sparkles,
-  RefreshCw, Download, Eye, ListChecks, Wand2
+  Bot,
+  Download,
+  Eye,
+  FolderOpen,
+  Gamepad2,
+  ListChecks,
+  Loader2,
+  Save,
+  Send,
+  Trash2,
+  User,
+  Wand2,
+  X,
 } from 'lucide-react';
 import aiGameService from '../../services/aiGameService';
 
+const initialMessage = {
+  id: 1,
+  type: 'ai',
+  content:
+    'Привет! Я помогу тебе создать интерактивную игру. Опиши, какую игру ты хочешь, и я сгенерирую её для тебя!\n\nНапример:\n• "Создай игру на знание столиц мира"\n• "Сделай математическую игру на скорость"\n• "Игра-викторина по истории Казахстана"\n• "Змейка с образовательными вопросами"',
+  timestamp: new Date(),
+};
+
 export default function GameGeneratorPage() {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([initialMessage]);
   const [inputMessage, setInputMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedHtml, setGeneratedHtml] = useState('');
   const [currentPrompt, setCurrentPrompt] = useState('');
-  const [showPreview, setShowPreview] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [savedGames, setSavedGames] = useState([]);
-  const [showSaveModal, setShowSaveModal] = useState(false);
-  const [saveTitle, setSaveTitle] = useState('');
   const [showSavedList, setShowSavedList] = useState(false);
   const [loadingGame, setLoadingGame] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveTitle, setSaveTitle] = useState('');
   const [searchParams] = useSearchParams();
-  const messagesEndRef = useRef(null);
-  const iframeRef = useRef(null);
 
   useEffect(() => {
     loadSavedGames();
-    setMessages([{
-      id: 1,
-      type: 'ai',
-      content: 'Привет! Я помогу тебе создать интерактивную игру. Опиши, какую игру ты хочешь, и я сгенерирую её для тебя!\n\nНапример:\n• "Создай игру на знание столиц мира"\n• "Сделай математическую игру на скорость"\n• "Игра-викторина по истории Казахстана"\n• "Змейка с образовательными вопросами"',
-      timestamp: new Date()
-    }]);
   }, []);
 
   useEffect(() => {
@@ -49,17 +57,16 @@ export default function GameGeneratorPage() {
       setSaveTitle(presetTitle);
     }
 
+    const infoText = 'Промпт из плана урока уже подставлен. Если нужно, отредактируй его и нажми отправить.';
     setMessages((prev) => {
-      const infoText = 'Промпт из плана урока уже подставлен. Если нужно, отредактируй его и нажми отправить.';
-      const exists = prev.some((message) => message.type === 'ai' && message.content === infoText);
-      if (exists) {
+      if (prev.some((item) => item.content === infoText)) {
         return prev;
       }
 
       return [
         ...prev,
         {
-          id: Date.now() + 5,
+          id: Date.now() + 10,
           type: 'ai',
           content: infoText,
           timestamp: new Date(),
@@ -68,509 +75,377 @@ export default function GameGeneratorPage() {
     });
   }, [searchParams]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
   const loadSavedGames = async () => {
     try {
-      const res = await aiGameService.getAll();
-      setSavedGames(res.data || []);
-    } catch (err) {
-      console.error(err);
+      const response = await aiGameService.getAll();
+      setSavedGames(response.data || []);
+    } catch (error) {
+      console.error(error);
     }
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!inputMessage.trim() || isGenerating) return;
+  const handleSendMessage = async (event) => {
+    event.preventDefault();
+    if (!inputMessage.trim() || isGenerating) {
+      return;
+    }
 
     const prompt = inputMessage.trim();
-    const userMsg = {
-      id: Date.now(),
-      type: 'user',
-      content: prompt,
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMsg]);
     setInputMessage('');
-    setIsGenerating(true);
     setCurrentPrompt(prompt);
+    setIsGenerating(true);
 
-    // AI "thinking" message
-    const thinkingMsg = {
-      id: Date.now() + 1,
-      type: 'ai',
-      content: 'Р“РµРЅРµСЂРёСЂСѓСЋ РёРіСЂСѓ... Р­С‚Рѕ РјРѕР¶РµС‚ Р·Р°РЅСЏС‚СЊ РґРѕ 1-2 РјРёРЅСѓС‚.',
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, thinkingMsg]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        type: 'user',
+        content: prompt,
+        timestamp: new Date(),
+      },
+      {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: 'Генерирую игру... Это может занять до 1-2 минут.',
+        timestamp: new Date(),
+        isLoading: true,
+      },
+    ]);
 
     try {
       const result = await aiGameService.generate(prompt);
 
-      if (result.success && result.data?.html_code) {
-        setGeneratedHtml(result.data.html_code);
-        setShowPreview(true);
+      setMessages((prev) => {
+        const withoutLoading = prev.filter((message) => !message.isLoading);
 
-        // Remove thinking message and add success
-        setMessages(prev => {
-          const filtered = prev.filter(m => m.id !== thinkingMsg.id);
-          return [...filtered, {
-            id: Date.now() + 2,
-            type: 'ai',
-            content: 'РРіСЂР° РіРѕС‚РѕРІР°! РћРЅР° РѕС‚РѕР±СЂР°Р¶Р°РµС‚СЃСЏ СЃРїСЂР°РІР°. Р’С‹ РјРѕР¶РµС‚Рµ:\nвЂў РЎРѕС…СЂР°РЅРёС‚СЊ РµС‘\nвЂў РЎРєР°С‡Р°С‚СЊ РєР°Рє HTML-С„Р°Р№Р»\nвЂў РћС‚РєСЂС‹С‚СЊ РЅР° РІРµСЃСЊ СЌРєСЂР°РЅ\nвЂў РџРѕРїСЂРѕСЃРёС‚СЊ РјРµРЅСЏ РїРµСЂРµРґРµР»Р°С‚СЊ РёР»Рё СЃРѕР·РґР°С‚СЊ РЅРѕРІСѓСЋ',
-            timestamp: new Date()
-          }];
-        });
-      } else {
-        setMessages(prev => {
-          const filtered = prev.filter(m => m.id !== thinkingMsg.id);
-          return [...filtered, {
-            id: Date.now() + 2,
+        if (result.success && result.data?.html_code) {
+          setGeneratedHtml(result.data.html_code);
+
+          return [
+            ...withoutLoading,
+            {
+              id: Date.now() + 2,
+              type: 'ai',
+              content:
+                'Игра готова. Если нужно, сохрани ее в библиотеку или попроси меня изменить механику, тему, сложность или дизайн.',
+              timestamp: new Date(),
+            },
+          ];
+        }
+
+        return [
+          ...withoutLoading,
+          {
+            id: Date.now() + 3,
             type: 'error',
-            content: 'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРіРµРЅРµСЂРёСЂРѕРІР°С‚СЊ РёРіСЂСѓ. РџРѕРїСЂРѕР±СѓР№С‚Рµ РѕРїРёСЃР°С‚СЊ Р±РѕР»РµРµ РїРѕРґСЂРѕР±РЅРѕ.',
-            timestamp: new Date()
-          }];
-        });
-      }
-    } catch (error) {
-      setMessages(prev => {
-        const filtered = prev.filter(m => m.id !== thinkingMsg.id);
-        return [...filtered, {
-          id: Date.now() + 2,
-          type: 'error',
-          content: `РћС€РёР±РєР°: ${error.message}`,
-          timestamp: new Date()
-        }];
+            content: 'Не удалось сгенерировать игру. Попробуй описать задачу подробнее.',
+            timestamp: new Date(),
+          },
+        ];
       });
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev.filter((message) => !message.isLoading),
+        {
+          id: Date.now() + 4,
+          type: 'error',
+          content: `Ошибка: ${error.message}`,
+          timestamp: new Date(),
+        },
+      ]);
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handleSaveGame = async () => {
-    if (!saveTitle.trim() || !generatedHtml) return;
+    if (!saveTitle.trim() || !generatedHtml) {
+      return;
+    }
+
     try {
       await aiGameService.save(saveTitle.trim(), currentPrompt, generatedHtml);
-      setSaveTitle('');
       setShowSaveModal(false);
+      setSaveTitle('');
       await loadSavedGames();
-    } catch (err) {
-      alert(err.message);
+    } catch (error) {
+      alert(error.message);
     }
   };
 
   const handleLoadGame = async (gameId) => {
     try {
       setLoadingGame(true);
-      const res = await aiGameService.getById(gameId);
-      if (res.data) {
-        setGeneratedHtml(res.data.html_code);
-        setCurrentPrompt(res.data.prompt);
-        setShowPreview(true);
+      const response = await aiGameService.getById(gameId);
+
+      if (response.data) {
+        setGeneratedHtml(response.data.html_code || '');
+        setCurrentPrompt(response.data.prompt || '');
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 5,
+            type: 'ai',
+            content: `Загрузил игру: ${response.data.title}`,
+            timestamp: new Date(),
+          },
+        ]);
         setShowSavedList(false);
       }
-    } catch (err) {
-      alert(err.message);
+    } catch (error) {
+      alert(error.message);
     } finally {
       setLoadingGame(false);
     }
   };
 
   const handleDeleteGame = async (gameId) => {
-    if (!confirm('РЈРґР°Р»РёС‚СЊ СЌС‚Сѓ РёРіСЂСѓ?')) return;
+    if (!window.confirm('Удалить эту игру?')) {
+      return;
+    }
+
     try {
       await aiGameService.delete(gameId);
       await loadSavedGames();
-    } catch (err) {
-      alert(err.message);
+    } catch (error) {
+      alert(error.message);
     }
   };
 
   const handleDownload = () => {
-    if (!generatedHtml) return;
+    if (!generatedHtml) {
+      return;
+    }
+
     const blob = new Blob([generatedHtml], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `game-${Date.now()}.html`;
-    a.click();
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ai-game-${Date.now()}.html`;
+    link.click();
     URL.revokeObjectURL(url);
   };
 
-  const renderIframeContent = useCallback(() => {
-    if (!iframeRef.current || !generatedHtml) return;
-    const doc = iframeRef.current.contentDocument;
-    doc.open();
-    doc.write(generatedHtml);
-    doc.close();
-  }, [generatedHtml]);
-
-  useEffect(() => {
-    if (showPreview && generatedHtml) {
-      // Small delay to ensure iframe is mounted
-      setTimeout(renderIframeContent, 100);
-    }
-  }, [showPreview, generatedHtml, renderIframeContent]);
-
   return (
-    <div className="h-[calc(100vh-4rem)] bg-neutral-50 dark:bg-dark-bg flex">
-      {/* Left Sidebar */}
-      <div className="hidden lg:flex w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-col flex-shrink-0">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Gamepad2 className="w-5 h-5 text-primary-500" />
-            РРіСЂС‹
+    <div className="h-[calc(100vh-4rem)] bg-neutral-100 dark:bg-dark-bg flex overflow-hidden">
+      <aside className="hidden lg:flex w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-col">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-3xl font-black tracking-tight text-neutral-900 dark:text-white flex items-center gap-3">
+            <Gamepad2 className="w-7 h-7 text-red-500" />
+            Игры
           </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">РРЅС‚РµСЂР°РєС‚РёРІРЅС‹Рµ Р°РєС‚РёРІРЅРѕСЃС‚Рё</p>
+          <p className="text-sm text-neutral-500 mt-2">Интерактивные активности и генерация</p>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
-          <button
-            onClick={() => window.location.href = '/interactive-games'}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+        <nav className="p-4 space-y-3">
+          <Link
+            to="/interactive-games"
+            className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-gray-700 transition-colors"
           >
             <ListChecks className="w-5 h-5" />
-            <div className="text-left">
-              <div>Р’РёРєС‚РѕСЂРёРЅС‹</div>
-              <div className="text-xs opacity-70">РЎРѕР·РґР°РЅРЅС‹Рµ РєРІРёР·С‹</div>
+            <div>
+              <div className="font-semibold">Викторины</div>
+              <div className="text-xs text-neutral-500">Созданные квизы</div>
             </div>
-          </button>
+          </Link>
+
+          <div className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300">
+            <Wand2 className="w-5 h-5" />
+            <div>
+              <div className="font-semibold">Создать игру</div>
+              <div className="text-xs opacity-80">AI генератор</div>
+            </div>
+          </div>
+        </nav>
+      </aside>
+
+      <section className="flex-1 flex flex-col min-w-0">
+        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 flex items-center justify-center shrink-0">
+              <Wand2 className="w-6 h-6 text-white" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-3xl font-black tracking-tight text-neutral-900 dark:text-white truncate">AI Генератор Игр</h1>
+              <p className="text-sm text-neutral-500 truncate">Опиши игру и получи интерактивный HTML-сценарий</p>
+            </div>
+          </div>
 
           <button
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-violet-50 to-fuchsia-50 dark:from-violet-900/20 dark:to-fuchsia-900/20 text-violet-700 dark:text-violet-300 shadow-sm transition-all"
+            type="button"
+            onClick={() => setShowSavedList((prev) => !prev)}
+            className="flex items-center gap-2 rounded-xl bg-neutral-100 dark:bg-gray-700 px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-gray-600 transition-colors"
           >
-            <Wand2 className="w-5 h-5" />
-            <div className="text-left">
-              <div>РЎРѕР·РґР°С‚СЊ РёРіСЂСѓ</div>
-              <div className="text-xs opacity-70">AI РіРµРЅРµСЂР°С‚РѕСЂ</div>
-            </div>
+            <FolderOpen className="w-4 h-4" />
+            Мои игры ({savedGames.length})
           </button>
-        </nav>
+        </header>
 
+        <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-6">
+          <div className="max-w-3xl mx-auto space-y-4">
+            {messages.map((message) => (
+              <article key={message.id} className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {message.type !== 'user' && (
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 flex items-center justify-center shrink-0 mt-1">
+                    {message.isLoading ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Bot className="w-5 h-5 text-white" />}
+                  </div>
+                )}
+
+                <div className={`max-w-[85%] ${message.type === 'user' ? 'order-first' : ''}`}>
+                  <div
+                    className={`rounded-2xl px-5 py-4 border text-base leading-relaxed whitespace-pre-wrap ${
+                      message.type === 'user'
+                        ? 'bg-primary-600 text-white border-primary-600'
+                        : message.type === 'error'
+                        ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
+                        : 'bg-white text-neutral-900 border-neutral-200 dark:bg-gray-800 dark:text-neutral-100 dark:border-gray-700'
+                    }`}
+                  >
+                    {message.content}
+                  </div>
+                  <p className="text-xs text-neutral-400 mt-2 px-1">
+                    {message.timestamp.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+
+                {message.type === 'user' && (
+                  <div className="w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center shrink-0 mt-1">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                )}
+              </article>
+            ))}
+
+            {generatedHtml && (
+              <div className="max-w-[85%] bg-white dark:bg-gray-800 border border-neutral-200 dark:border-gray-700 rounded-2xl px-5 py-4">
+                <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-3">Игра сгенерирована. Можно сохранить или скачать HTML.</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSaveModal(true)}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-violet-600 text-white text-sm font-medium hover:bg-violet-700 transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                    Сохранить
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownload}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-neutral-200 dark:bg-gray-700 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-300 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Скачать HTML
+                  </button>
+                </div>
               </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-lg flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-900 dark:text-white">AI Р“РµРЅРµСЂР°С‚РѕСЂ РёРіСЂ</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">РћРїРёС€РёС‚Рµ РёРіСЂСѓ вЂ” AI СЃРѕР·РґР°СЃС‚ РµС‘</p>
-            </div>
+            )}
           </div>
-          <div className="flex items-center gap-2">
+        </div>
+
+        <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-5 sm:px-8 py-4">
+          <form onSubmit={handleSendMessage} className="max-w-3xl mx-auto flex items-center gap-3">
+            <input
+              type="text"
+              value={inputMessage}
+              onChange={(event) => setInputMessage(event.target.value)}
+              placeholder="Опиши игру, которую хочешь создать..."
+              disabled={isGenerating}
+              className="flex-1 h-14 rounded-2xl border border-neutral-300 dark:border-gray-600 bg-neutral-50 dark:bg-gray-900 px-5 text-base text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60"
+            />
             <button
-              onClick={() => setShowSavedList(!showSavedList)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+              type="submit"
+              disabled={!inputMessage.trim() || isGenerating}
+              className="h-14 w-14 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white flex items-center justify-center hover:from-violet-600 hover:to-fuchsia-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Gamepad2 className="w-4 h-4" />
-              РњРѕРё РёРіСЂС‹ ({savedGames.length})
+              <Send className="w-5 h-5" />
+            </button>
+          </form>
+        </footer>
+      </section>
+
+      {showSavedList && (
+        <aside className="absolute right-0 top-0 bottom-0 w-full sm:w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-2xl z-40 flex flex-col">
+          <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Мои игры</h3>
+            <button type="button" onClick={() => setShowSavedList(false)} className="text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200">
+              <X className="w-5 h-5" />
             </button>
           </div>
-        </div>
 
-      {/* Main content: Chat + Preview */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
-        {/* Chat Panel */}
-        <div className={`flex flex-col h-full ${showPreview && !isFullscreen ? 'w-full h-1/2 lg:w-1/2 lg:h-full' : 'w-full'} transition-all duration-300`}>
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="max-w-2xl mx-auto space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex items-start gap-3 ${message.type === 'user' ? 'flex-row-reverse' : ''}`}
-                >
-                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                    message.type === 'user'
-                      ? 'bg-blue-500'
-                      : message.type === 'error'
-                      ? 'bg-red-500'
-                      : 'bg-gradient-to-r from-violet-500 to-fuchsia-500'
-                  }`}>
-                    {message.type === 'user' ? (
-                      <User className="w-4 h-4 text-white" />
-                    ) : (
-                      <Bot className="w-4 h-4 text-white" />
-                    )}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {savedGames.length === 0 ? (
+              <div className="h-full min-h-48 flex items-center justify-center text-sm text-neutral-500">Сохраненных игр пока нет</div>
+            ) : (
+              savedGames.map((game) => (
+                <article key={game.id} className="rounded-xl border border-neutral-200 dark:border-gray-700 bg-neutral-50 dark:bg-gray-700/40 p-3">
+                  <h4 className="font-semibold text-neutral-900 dark:text-white truncate">{game.title}</h4>
+                  <p className="text-xs text-neutral-500 mt-1 truncate">{game.prompt}</p>
+                  <p className="text-xs text-neutral-400 mt-2">{new Date(game.created_at).toLocaleDateString('ru-RU')}</p>
+
+                  <div className="flex items-center gap-2 mt-3">
+                    <button
+                      type="button"
+                      disabled={loadingGame}
+                      onClick={() => handleLoadGame(game.id)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-xs font-medium hover:bg-violet-200 dark:hover:bg-violet-900/50"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      Открыть
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteGame(game.id)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs font-medium hover:bg-red-200 dark:hover:bg-red-900/50"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Удалить
+                    </button>
                   </div>
-                  <div className={`flex-1 max-w-[80%] ${message.type === 'user' ? 'text-right' : ''}`}>
-                    <div className={`inline-block p-3 rounded-xl text-sm ${
-                      message.type === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : message.type === 'error'
-                        ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
-                        : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
-                    }`}>
-                      <p className="whitespace-pre-wrap">{message.content}</p>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {message.timestamp.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-
-              {isGenerating && (
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full flex items-center justify-center">
-                    <Bot className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3 rounded-xl">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 text-violet-500 animate-spin" />
-                      <span className="text-sm text-gray-500">Р“РµРЅРµСЂРёСЂСѓСЋ РёРіСЂСѓ...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div ref={messagesEndRef} />
-            </div>
+                </article>
+              ))
+            )}
           </div>
+        </aside>
+      )}
 
-          {/* Input */}
-          <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
-            <form onSubmit={handleSendMessage} className="max-w-2xl mx-auto flex gap-2">
-              <input
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="РћРїРёС€РёС‚Рµ РёРіСЂСѓ РєРѕС‚РѕСЂСѓСЋ С…РѕС‚РёС‚Рµ СЃРѕР·РґР°С‚СЊ..."
-                disabled={isGenerating}
-                className="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 disabled:opacity-50 text-sm"
-              />
-              <button
-                type="submit"
-                disabled={!inputMessage.trim() || isGenerating}
-                className="px-4 py-2.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-xl font-medium hover:from-violet-600 hover:to-fuchsia-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                <Send className="w-5 h-5" />
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* Preview Panel */}
-        {showPreview && !isFullscreen && (
-          <div className="w-full h-1/2 lg:w-1/2 lg:h-full border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900">
-            {/* Preview toolbar */}
-            <div className="flex flex-wrap items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 gap-2">
-              <div className="flex items-center gap-2">
-                <Play className="w-4 h-4 text-green-500" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">РџСЂРµРІСЊСЋ РёРіСЂС‹</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => renderIframeContent()}
-                  className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
-                  title="РџРµСЂРµР·Р°РїСѓСЃС‚РёС‚СЊ"
-                >
-                  <RefreshCw className="w-4 h-4 text-gray-500" />
-                </button>
-                <button
-                  onClick={() => setShowSaveModal(true)}
-                  className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
-                  title="РЎРѕС…СЂР°РЅРёС‚СЊ"
-                >
-                  <Save className="w-4 h-4 text-blue-500" />
-                </button>
-                <button
-                  onClick={handleDownload}
-                  className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
-                  title="РЎРєР°С‡Р°С‚СЊ HTML"
-                >
-                  <Download className="w-4 h-4 text-gray-500" />
-                </button>
-                <button
-                  onClick={() => setIsFullscreen(true)}
-                  className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
-                  title="РќР° РІРµСЃСЊ СЌРєСЂР°РЅ"
-                >
-                  <Maximize2 className="w-4 h-4 text-gray-500" />
-                </button>
-                <button
-                  onClick={() => { setShowPreview(false); setGeneratedHtml(''); }}
-                  className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
-                  title="Р—Р°РєСЂС‹С‚СЊ"
-                >
-                  <X className="w-4 h-4 text-gray-500" />
-                </button>
-              </div>
-            </div>
-            {/* Iframe */}
-            <div className="flex-1 overflow-hidden">
-              <iframe
-                ref={iframeRef}
-                className="w-full h-full border-0"
-                sandbox="allow-scripts allow-same-origin"
-                title="Game Preview"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Fullscreen Preview */}
-        {isFullscreen && generatedHtml && (
-          <div className="fixed inset-0 z-50 bg-white dark:bg-gray-900 flex flex-col">
-            <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <Gamepad2 className="w-5 h-5 text-violet-500" />
-                <span className="font-medium text-gray-900 dark:text-white">РРіСЂР°</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => {
-                    const fsIframe = document.getElementById('fullscreen-iframe');
-                    if (fsIframe) {
-                      const doc = fsIframe.contentDocument;
-                      doc.open();
-                      doc.write(generatedHtml);
-                      doc.close();
-                    }
-                  }}
-                  className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
-                  title="РџРµСЂРµР·Р°РїСѓСЃС‚РёС‚СЊ"
-                >
-                  <RefreshCw className="w-4 h-4 text-gray-500" />
-                </button>
-                <button
-                  onClick={() => setShowSaveModal(true)}
-                  className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
-                  title="РЎРѕС…СЂР°РЅРёС‚СЊ"
-                >
-                  <Save className="w-4 h-4 text-blue-500" />
-                </button>
-                <button
-                  onClick={handleDownload}
-                  className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
-                  title="РЎРєР°С‡Р°С‚СЊ"
-                >
-                  <Download className="w-4 h-4 text-gray-500" />
-                </button>
-                <button
-                  onClick={() => setIsFullscreen(false)}
-                  className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
-                  title="Р’С‹Р№С‚Рё РёР· РїРѕР»РЅРѕРіРѕ СЌРєСЂР°РЅР°"
-                >
-                  <Minimize2 className="w-4 h-4 text-gray-500" />
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <iframe
-                id="fullscreen-iframe"
-                className="w-full h-full border-0"
-                sandbox="allow-scripts allow-same-origin"
-                title="Game Fullscreen"
-                ref={(el) => {
-                  if (el && generatedHtml) {
-                    setTimeout(() => {
-                      const doc = el.contentDocument;
-                      doc.open();
-                      doc.write(generatedHtml);
-                      doc.close();
-                    }, 50);
-                  }
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Saved Games Panel */}
-        {showSavedList && (
-          <div className="absolute right-0 top-0 bottom-0 w-full sm:w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-xl z-40 flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-              <h3 className="font-semibold text-gray-900 dark:text-white">РњРѕРё РёРіСЂС‹</h3>
-              <button onClick={() => setShowSavedList(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {savedGames.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 text-sm">РќРµС‚ СЃРѕС…СЂР°РЅС‘РЅРЅС‹С… РёРіСЂ</div>
-              ) : (
-                savedGames.map((game) => (
-                  <div key={game.id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 dark:text-white text-sm truncate">{game.title}</h4>
-                        <p className="text-xs text-gray-500 mt-1 truncate">{game.prompt}</p>
-                        <p className="text-xs text-gray-400 mt-1">{new Date(game.created_at).toLocaleDateString('ru-RU')}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 mt-2">
-                      <button
-                        onClick={() => handleLoadGame(game.id)}
-                        disabled={loadingGame}
-                        className="flex items-center gap-1 px-2 py-1 text-xs bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded hover:bg-violet-200 transition"
-                      >
-                        <Eye className="w-3 h-3" />
-                        РћС‚РєСЂС‹С‚СЊ
-                      </button>
-                      <button
-                        onClick={() => handleDeleteGame(game.id)}
-                        className="flex items-center gap-1 px-2 py-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 transition"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        РЈРґР°Р»РёС‚СЊ
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Save Modal */}
       {showSaveModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowSaveModal(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">РЎРѕС…СЂР°РЅРёС‚СЊ РёРіСЂСѓ</h2>
-              <button onClick={() => setShowSaveModal(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+        <div
+          className="fixed inset-0 bg-black/45 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowSaveModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 shadow-2xl border border-neutral-200 dark:border-gray-700 p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-4">Сохранить игру</h3>
             <input
               type="text"
               value={saveTitle}
-              onChange={(e) => setSaveTitle(e.target.value)}
-              placeholder="РќР°Р·РІР°РЅРёРµ РёРіСЂС‹"
-              className="w-full px-4 py-2.5 border dark:border-gray-600 rounded-lg mb-4 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-violet-500"
+              onChange={(event) => setSaveTitle(event.target.value)}
+              placeholder="Название игры"
+              className="w-full h-11 rounded-lg border border-neutral-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 text-neutral-900 dark:text-white mb-4 focus:outline-none focus:ring-2 focus:ring-violet-500"
               autoFocus
             />
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={() => setShowSaveModal(false)}
-                className="flex-1 px-4 py-2 border dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300"
+                className="flex-1 h-11 rounded-lg border border-neutral-300 dark:border-gray-600 text-neutral-700 dark:text-neutral-200"
               >
-                РћС‚РјРµРЅР°
+                Отмена
               </button>
               <button
+                type="button"
                 onClick={handleSaveGame}
                 disabled={!saveTitle.trim()}
-                className="flex-1 px-4 py-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-lg hover:from-violet-600 hover:to-fuchsia-600 disabled:opacity-50"
+                className="flex-1 h-11 rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50"
               >
-                РЎРѕС…СЂР°РЅРёС‚СЊ
+                Сохранить
               </button>
             </div>
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 }
-
-
