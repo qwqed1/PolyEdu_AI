@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Globe from 'globe.gl';
-import { AlertCircle, Globe2, MapPinned, Orbit, RotateCcw } from 'lucide-react';
+import { AlertCircle, Expand, Globe2, MapPinned, Minimize, Orbit, RotateCcw } from 'lucide-react';
 import { getLocalizedText } from '../../data/labCatalog';
 
 const capitalPoints = [
@@ -35,17 +35,29 @@ function supportsWebGL() {
 }
 
 export default function GeographyLab({ language, selectedTool }) {
+  const globeShellRef = useRef(null);
   const globeContainerRef = useRef(null);
   const globeInstanceRef = useRef(null);
   const [error, setError] = useState('');
   const [selectedMarker, setSelectedMarker] = useState(capitalPoints[0]);
   const [mapReady, setMapReady] = useState(false);
   const [layers, setLayers] = useState({ graticules: true, atmosphere: true, routes: true });
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === globeShellRef.current);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    const shellEl = globeShellRef.current;
     const containerEl = globeContainerRef.current;
 
-    if (!containerEl) {
+    if (!shellEl || !containerEl) {
       return undefined;
     }
 
@@ -67,10 +79,10 @@ export default function GeographyLab({ language, selectedTool }) {
     try {
       const globe = new Globe(containerEl, { animateIn: true, waitForGlobeReady: true });
       globe
-        .width(containerEl.clientWidth)
-        .height(480)
+        .width(shellEl.clientWidth)
+        .height(shellEl.clientHeight)
         .backgroundColor('rgba(0,0,0,0)')
-        .globeTileEngineUrl((x, y, l) => `https://tile.openstreetmap.org/${l}/${x}/${y}.png`)
+        .globeTileEngineUrl((x, y, level) => `https://tile.openstreetmap.org/${level}/${x}/${y}.png`)
         .showAtmosphere(true)
         .atmosphereColor('#7dd3fc')
         .pointAltitude(0.02)
@@ -102,12 +114,15 @@ export default function GeographyLab({ language, selectedTool }) {
     }
 
     const handleResize = () => {
-      if (globeInstanceRef.current && containerEl) {
-        globeInstanceRef.current.width(containerEl.clientWidth);
+      if (globeInstanceRef.current && shellEl) {
+        globeInstanceRef.current
+          .width(shellEl.clientWidth)
+          .height(shellEl.clientHeight);
       }
     };
 
     window.addEventListener('resize', handleResize);
+    setTimeout(handleResize, 0);
 
     return () => {
       destroyed = true;
@@ -120,7 +135,7 @@ export default function GeographyLab({ language, selectedTool }) {
         globeInstanceRef.current = null;
       }
     };
-  }, [language]);
+  }, [language, isFullscreen]);
 
   useEffect(() => {
     if (!globeInstanceRef.current) {
@@ -146,6 +161,23 @@ export default function GeographyLab({ language, selectedTool }) {
     { key: 'atmosphere', label: language === 'kk' ? 'Атмосфера' : 'Атмосфера' },
     { key: 'routes', label: language === 'kk' ? 'Маршруттар' : 'Маршруты' },
   ];
+
+  const toggleFullscreen = async () => {
+    const shellEl = globeShellRef.current;
+    if (!shellEl) {
+      return;
+    }
+
+    try {
+      if (document.fullscreenElement === shellEl) {
+        await document.exitFullscreen();
+      } else {
+        await shellEl.requestFullscreen();
+      }
+    } catch (fullscreenError) {
+      console.error('Fullscreen toggle failed', fullscreenError);
+    }
+  };
 
   const challengeText = selectedTool === 'regions'
     ? getLocalizedText(
@@ -185,15 +217,12 @@ export default function GeographyLab({ language, selectedTool }) {
               key={toggle.key}
               type="button"
               onClick={() => setLayers((current) => ({ ...current, [toggle.key]: !current[toggle.key] }))}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                layers[toggle.key]
-                  ? 'bg-sky-600 text-white'
-                  : 'bg-neutral-100 text-neutral-600 dark:bg-slate-800 dark:text-neutral-300'
-              }`}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${layers[toggle.key] ? 'bg-sky-600 text-white' : 'bg-neutral-100 text-neutral-600 dark:bg-slate-800 dark:text-neutral-300'}`}
             >
               {toggle.label}
             </button>
           ))}
+
           <button
             type="button"
             onClick={() => {
@@ -206,19 +235,31 @@ export default function GeographyLab({ language, selectedTool }) {
             <RotateCcw className="h-4 w-4" />
             {language === 'kk' ? 'Қайтару' : 'Сбросить'}
           </button>
+
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="inline-flex items-center gap-2 rounded-full bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700 dark:bg-slate-800 dark:text-neutral-200"
+          >
+            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
+            {language === 'kk' ? (isFullscreen ? 'Кішірейту' : 'Толық экран') : (isFullscreen ? 'Свернуть' : 'На весь экран')}
+          </button>
         </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="overflow-hidden rounded-3xl border border-neutral-200 bg-slate-950/95 dark:border-slate-700">
+        <div
+          ref={globeShellRef}
+          className={`overflow-hidden border border-neutral-200 bg-slate-950/95 dark:border-slate-700 ${isFullscreen ? 'h-screen rounded-none' : 'h-[480px] rounded-3xl'}`}
+        >
           {error ? (
-            <div className="flex h-[480px] flex-col items-center justify-center gap-3 px-6 text-center text-slate-100">
+            <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-slate-100">
               <AlertCircle className="h-10 w-10 text-amber-300" />
               <p className="max-w-md text-sm leading-6">{error}</p>
             </div>
           ) : (
-            <div>
-              <div ref={globeContainerRef} className="h-[480px] w-full" />
+            <div className="h-full">
+              <div ref={globeContainerRef} className="h-full w-full" />
               {!mapReady && (
                 <div className="border-t border-slate-800 bg-slate-900/90 px-4 py-3 text-sm text-slate-300">
                   {language === 'kk' ? 'Глобус жүктеліп жатыр...' : 'Глобус загружается...'}
@@ -258,7 +299,7 @@ export default function GeographyLab({ language, selectedTool }) {
               </li>
               <li>
                 {language === 'kk'
-                  ? 'Келесі қадам: осы картадан ойын немесе пікірталас сценариін жасаңыз.'
+                  ? 'Келесі қадам: осы картадан ойын немесе пікірталас сценарийін жасаңыз.'
                   : 'Следующий шаг: превратите карту в игру или сценарий обсуждения.'}
               </li>
             </ul>
