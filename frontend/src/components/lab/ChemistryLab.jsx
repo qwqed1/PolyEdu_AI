@@ -186,7 +186,7 @@ function StageCard({ language, title, subtitle, modelText, loading, emptyTitle, 
     }
 
     async function renderModel() {
-      if (!modelText) {
+      if (loading || !modelText) {
         viewerNode.innerHTML = '';
         setError('');
         return;
@@ -215,6 +215,7 @@ function StageCard({ language, title, subtitle, modelText, loading, emptyTitle, 
           sphere: { scale: 0.33, colorscheme: 'Jmol' },
         });
         viewer.zoomTo();
+        viewer.resize();
         viewer.render();
 
         if (!cancelled) {
@@ -235,7 +236,7 @@ function StageCard({ language, title, subtitle, modelText, loading, emptyTitle, 
         viewerNode.innerHTML = '';
       }
     };
-  }, [language, modelText]);
+  }, [language, loading, modelText]);
 
   return (
     <div className="overflow-hidden rounded-[2rem] border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 shadow-sm">
@@ -274,7 +275,11 @@ function StageCard({ language, title, subtitle, modelText, loading, emptyTitle, 
           </div>
         ) : null}
 
-        <div ref={viewerRef} className={`${loading || !modelText || error ? 'hidden' : 'block'} h-full w-full`} />
+        <div
+          ref={viewerRef}
+          className={`h-full w-full ${!modelText || error ? 'hidden' : 'block'}`}
+          style={{ visibility: loading ? 'hidden' : 'visible' }}
+        />
       </div>
     </div>
   );
