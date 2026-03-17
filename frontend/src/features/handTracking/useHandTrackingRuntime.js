@@ -9,6 +9,7 @@ import {
   createHandLandmarker,
   detectHandsForVideo,
   drawHandTrackingOverlay,
+  normalizeFaceBoxes,
   normalizeHandTrackingResult,
 } from './handTrackingService';
 import { useHandTrackingCamera } from './useHandTrackingCamera';
@@ -16,6 +17,7 @@ import { useHandTrackingCamera } from './useHandTrackingCamera';
 function buildInitialFrame() {
   return {
     hands: [],
+    faceBoxes: [],
     trackingStatus: 'idle',
     faces: 0,
     faceTrackingStatus: 'idle',
@@ -38,6 +40,7 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
   const lastFaceCheckRef = useRef(0);
   const faceSnapshotRef = useRef({
     faces: 0,
+    faceBoxes: [],
     faceTrackingStatus: 'idle',
   });
   const {
@@ -70,6 +73,7 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
     faceCheckInFlightRef.current = false;
     faceSnapshotRef.current = {
       faces: 0,
+      faceBoxes: [],
       faceTrackingStatus: 'idle',
     };
     setFrame(buildInitialFrame());
@@ -160,6 +164,7 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
           .then((faces) => {
             faceSnapshotRef.current = {
               faces: faces.length,
+              faceBoxes: normalizeFaceBoxes(faces, videoElement),
               faceTrackingStatus: faces.length ? 'tracking' : 'searching',
             };
           })
@@ -167,6 +172,7 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
             console.warn('Face detection failed', error);
             faceSnapshotRef.current = {
               faces: 0,
+              faceBoxes: [],
               faceTrackingStatus: 'error',
             };
           })
@@ -176,6 +182,7 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
       } else if (!faceDetector) {
         faceSnapshotRef.current = {
           faces: 0,
+          faceBoxes: [],
           faceTrackingStatus: 'unsupported',
         };
       }
@@ -200,7 +207,7 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
       }, {});
 
       previousHandsRef.current = handsMap;
-      drawHandTrackingOverlay(overlayRef.current, normalized.hands);
+      drawHandTrackingOverlay(overlayRef.current, normalized.hands, faceSnapshotRef.current.faceBoxes);
 
       if (now - lastEmitRef.current >= HAND_TRACKING_EMIT_INTERVAL_MS) {
         const fps = lastFrameTimestampRef.current
@@ -209,6 +216,7 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
 
         setFrame({
           hands: normalized.hands,
+          faceBoxes: faceSnapshotRef.current.faceBoxes,
           trackingStatus: normalized.hands.length ? 'tracking' : 'searching',
           faces: faceSnapshotRef.current.faces,
           faceTrackingStatus: faceSnapshotRef.current.faceTrackingStatus,
@@ -237,6 +245,7 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
 
     faceSnapshotRef.current = {
       faces: 0,
+      faceBoxes: [],
       faceTrackingStatus: ensureFaceDetector() ? 'searching' : 'unsupported',
     };
 

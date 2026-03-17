@@ -42,6 +42,15 @@ function clampNormalizedPoint(point) {
   };
 }
 
+function clampNormalizedBox(box) {
+  return {
+    x: Math.min(Math.max(box.x, 0), 1),
+    y: Math.min(Math.max(box.y, 0), 1),
+    width: Math.min(Math.max(box.width, 0), 1),
+    height: Math.min(Math.max(box.height, 0), 1),
+  };
+}
+
 function normalizePoint(point) {
   if (!point) {
     return { x: 0.5, y: 0.5 };
@@ -237,7 +246,35 @@ export function closeHandLandmarker(landmarker) {
   landmarker?.close?.();
 }
 
-export function drawHandTrackingOverlay(canvasElement, hands) {
+export function normalizeFaceBoxes(faces, videoElement) {
+  if (!faces?.length || !videoElement?.videoWidth || !videoElement?.videoHeight) {
+    return [];
+  }
+
+  return faces.map((face, index) => {
+    const box = face?.boundingBox;
+    if (!box) {
+      return null;
+    }
+
+    const normalizedWidth = box.width / videoElement.videoWidth;
+    const normalizedHeight = box.height / videoElement.videoHeight;
+    const normalizedX = box.x / videoElement.videoWidth;
+    const normalizedY = box.y / videoElement.videoHeight;
+
+    return {
+      id: `face-${index + 1}`,
+      ...clampNormalizedBox({
+        x: HAND_TRACKING_MIRROR_X ? 1 - normalizedX - normalizedWidth : normalizedX,
+        y: normalizedY,
+        width: normalizedWidth,
+        height: normalizedHeight,
+      }),
+    };
+  }).filter(Boolean);
+}
+
+export function drawHandTrackingOverlay(canvasElement, hands, faceBoxes = []) {
   if (!canvasElement) {
     return;
   }
@@ -248,6 +285,19 @@ export function drawHandTrackingOverlay(canvasElement, hands) {
   }
 
   context.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+  faceBoxes.forEach((faceBox) => {
+    context.strokeStyle = 'rgba(250, 204, 21, 0.95)';
+    context.lineWidth = 3;
+    context.setLineDash([8, 6]);
+    context.strokeRect(
+      faceBox.x * canvasElement.width,
+      faceBox.y * canvasElement.height,
+      faceBox.width * canvasElement.width,
+      faceBox.height * canvasElement.height,
+    );
+    context.setLineDash([]);
+  });
 
   if (!hands?.length) {
     return;

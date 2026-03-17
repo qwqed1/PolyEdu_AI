@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Atom,
   BatteryCharging,
+  Camera,
   Clock3,
   Lightbulb,
   PencilLine,
@@ -593,8 +594,32 @@ export default function LabArenaPage() {
 
   return (
     <div className={`min-h-screen bg-gradient-to-br ${copy.bg} text-white`}>
-      <video ref={runtime.videoRef} muted playsInline className="absolute h-px w-px opacity-0 pointer-events-none" />
-      <canvas ref={runtime.overlayRef} className="absolute h-px w-px opacity-0 pointer-events-none" />
+      <div className="fixed right-4 top-24 z-[70] w-64 overflow-hidden rounded-[1.4rem] border border-white/20 bg-slate-950/85 shadow-[0_18px_50px_rgba(2,6,23,0.55)] backdrop-blur md:w-72">
+        <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
+          <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/75">
+            <Camera className="h-3.5 w-3.5" />
+            {language === 'kk' ? 'Mini camera' : 'Mini camera'}
+          </div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/50">
+            {runtime.frame.fps ? `${runtime.frame.fps} fps` : '...'}
+          </div>
+        </div>
+
+        <div className="relative aspect-[4/3] bg-slate-900">
+          <video
+            ref={runtime.videoRef}
+            muted
+            playsInline
+            className="h-full w-full scale-x-[-1] object-cover"
+          />
+          <canvas ref={runtime.overlayRef} className="absolute inset-0 h-full w-full" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 border-t border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/70">
+          <div>{language === 'kk' ? `Қол: ${runtime.frame.hands.length}` : `Руки: ${runtime.frame.hands.length}`}</div>
+          <div>{language === 'kk' ? `Бет: ${runtime.frame.faces}` : `Лица: ${runtime.frame.faces}`}</div>
+        </div>
+      </div>
 
       <header className="mx-auto flex w-full max-w-[1600px] items-center justify-between px-6 py-5">
         <div className="flex items-center gap-3">
