@@ -16,6 +16,7 @@ import { chemistryMoleculeExamples, chemistryReactionOptions } from '../../data/
 import chemistryService from '../../services/chemistryService';
 import { getLocalizedText } from '../../data/labCatalog';
 import { loadExternalScript } from '../../utils/loadExternalScript';
+import ChemistryHandScene from './hand/ChemistryHandScene';
 
 let viewerLibraryPromise;
 
@@ -1013,6 +1014,10 @@ function ReactionsPanel({ language }) {
 }
 
 export default function ChemistryLab({ language, selectedTool }) {
+  if (selectedTool === 'hand_molecule') {
+    return <ChemistryHandScene />;
+  }
+
   if (selectedTool === 'periodic') {
     return <PeriodicTablePanel language={language} />;
   }

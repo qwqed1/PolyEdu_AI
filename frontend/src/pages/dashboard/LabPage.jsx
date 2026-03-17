@@ -1,8 +1,27 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { BookMarked, BrainCircuit, ChevronRight, Compass, Filter, FlaskConical, Gamepad2, ListChecks, Map, Search, Sparkles } from 'lucide-react';
+import {
+  BookMarked,
+  BrainCircuit,
+  ChevronRight,
+  Compass,
+  Filter,
+  FlaskConical,
+  Gamepad2,
+  ListChecks,
+  Map,
+  Search,
+  Sparkles,
+} from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { getLabSubjectByKey, getLocalizedText, getSubjectTitle, labCatalog, labFamilyLabels, labGradeLabels } from '../../data/labCatalog';
+import {
+  getLabSubjectByKey,
+  getLocalizedText,
+  getSubjectTitle,
+  labCatalog,
+  labFamilyLabels,
+  labGradeLabels,
+} from '../../data/labCatalog';
 import SubjectWorkspace from '../../components/lab/SubjectWorkspace';
 
 const TOOL_LABELS = {
@@ -10,6 +29,7 @@ const TOOL_LABELS = {
   capitals: { ru: 'Столицы', kk: 'Астаналар' },
   regions: { ru: 'Регионы', kk: 'Өңірлер' },
   board: { ru: 'Доска', kk: 'Тақта' },
+  air_board: { ru: 'Виртуальная доска', kk: 'Виртуалды тақта' },
   formula: { ru: 'Формула', kk: 'Формула' },
   graph: { ru: 'График', kk: 'График' },
   reader: { ru: 'Чтение', kk: 'Оқу' },
@@ -18,11 +38,12 @@ const TOOL_LABELS = {
   overview: { ru: 'Обзор', kk: 'Шолу' },
   ai: { ru: 'AI', kk: 'AI' },
   tasks: { ru: 'Задачи', kk: 'Тапсырмалар' },
+  periodic: { ru: 'Таблица Менделеева', kk: 'Менделеев кестесі' },
+  molecule: { ru: '3D молекулы', kk: '3D молекулалар' },
+  reactions: { ru: 'Реакции', kk: 'Реакциялар' },
+  hand_molecule: { ru: 'Hand molecule', kk: 'Hand molecule' },
+  hand_circuit: { ru: 'Hand circuit', kk: 'Hand circuit' },
 };
-
-TOOL_LABELS.periodic = { ru: 'Таблица Менделеева', kk: 'Менделеев кестесі' };
-TOOL_LABELS.molecule = { ru: '3D молекулы', kk: '3D молекулалар' };
-TOOL_LABELS.reactions = { ru: 'Реакции', kk: 'Реакциялар' };
 
 const LAST_SUBJECT_KEY = 'lab:last-subject';
 
@@ -54,7 +75,12 @@ export default function LabPage() {
     localStorage.setItem(LAST_SUBJECT_KEY, currentSubject.key);
     const fallbackTool = currentSubject.enabledTools[0];
     const storedTool = getStoredTool(currentSubject.key, fallbackTool);
-    setSelectedTool(currentSubject.enabledTools.includes(storedTool) ? storedTool : fallbackTool);
+    const nextTool = currentSubject.enabledTools.includes(storedTool) ? storedTool : fallbackTool;
+    const timerId = window.setTimeout(() => {
+      setSelectedTool(nextTool);
+    }, 0);
+
+    return () => window.clearTimeout(timerId);
   }, [currentSubject.key, currentSubject.enabledTools, navigate, subjectKey]);
 
   useEffect(() => {
@@ -74,9 +100,30 @@ export default function LabPage() {
 
   const primaryPrompt = currentSubject.promptPresets[0];
   const quickActions = [
-    { key: 'ai', label: language === 'kk' ? 'AI көмекшісі' : 'AI-помощник', description: language === 'kk' ? 'Пәндік промптпен чат ашу' : 'Открыть чат с предметным промптом', icon: BrainCircuit, to: `/ai-chat?prompt=${encodeURIComponent(primaryPrompt?.aiPrompt || '')}`, accent: 'from-blue-500 to-cyan-500' },
-    { key: 'lesson', label: language === 'kk' ? 'Сабақ жоспары' : 'План урока', description: language === 'kk' ? 'Тақырыпты lesson plans бетіне жіберу' : 'Передать тему в lesson plans', icon: BookMarked, to: `/lesson-plans?subject=${encodeURIComponent(getSubjectTitle(currentSubject, language))}&topic=${encodeURIComponent(primaryPrompt?.lessonTopic || '')}`, accent: 'from-emerald-500 to-teal-500' },
-    { key: 'game', label: language === 'kk' ? 'Ойын генераторы' : 'Генератор игры', description: language === 'kk' ? 'Дайын сценариймен ашу' : 'Открыть с готовым сценарием', icon: Gamepad2, to: `/interactive-games/ai-generator?prompt=${encodeURIComponent(primaryPrompt?.gamePrompt || '')}&title=${encodeURIComponent(`${getSubjectTitle(currentSubject, language)} Lab`)}`, accent: 'from-fuchsia-500 to-violet-500' },
+    {
+      key: 'ai',
+      label: language === 'kk' ? 'AI көмекшісі' : 'AI-помощник',
+      description: language === 'kk' ? 'Пәндік промптпен чат ашу' : 'Открыть чат с предметным промптом',
+      icon: BrainCircuit,
+      to: `/ai-chat?prompt=${encodeURIComponent(primaryPrompt?.aiPrompt || '')}`,
+      accent: 'from-blue-500 to-cyan-500',
+    },
+    {
+      key: 'lesson',
+      label: language === 'kk' ? 'Сабақ жоспары' : 'План урока',
+      description: language === 'kk' ? 'Тақырыпты lesson plans бетіне жіберу' : 'Передать тему в lesson plans',
+      icon: BookMarked,
+      to: `/lesson-plans?subject=${encodeURIComponent(getSubjectTitle(currentSubject, language))}&topic=${encodeURIComponent(primaryPrompt?.lessonTopic || '')}`,
+      accent: 'from-emerald-500 to-teal-500',
+    },
+    {
+      key: 'game',
+      label: language === 'kk' ? 'Ойын генераторы' : 'Генератор игры',
+      description: language === 'kk' ? 'Дайын сценариймен ашу' : 'Открыть с готовым сценарием',
+      icon: Gamepad2,
+      to: `/interactive-games/ai-generator?prompt=${encodeURIComponent(primaryPrompt?.gamePrompt || '')}&title=${encodeURIComponent(`${getSubjectTitle(currentSubject, language)} Lab`)}`,
+      accent: 'from-fuchsia-500 to-violet-500',
+    },
   ];
 
   return (
@@ -92,7 +139,9 @@ export default function LabPage() {
               {language === 'kk' ? 'Пәндік лаборатория' : 'Предметная лаборатория'}
             </h1>
             <p className="mt-2 text-sm leading-6 text-neutral-600 dark:text-neutral-300">
-              {language === 'kk' ? 'Қазақстан мектеп пәндері үшін бір каталог: deep модульдер, AI байланыстары және сабақ құралдары.' : 'Единый каталог школьных предметов Казахстана: deep-модули, AI-связки и инструменты для урока.'}
+              {language === 'kk'
+                ? 'Қазақстан мектеп пәндері үшін бір каталог: deep модульдер, AI байланыстары және сабақ құралдары.'
+                : 'Единый каталог школьных предметов Казахстана: deep-модули, AI-связки и инструменты для урока.'}
             </p>
           </div>
 

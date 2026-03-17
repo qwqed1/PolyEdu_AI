@@ -22,11 +22,12 @@ import { Component, useEffect, useState } from 'react';
  */
 
 /** @type {Record<string, LabToolConfig>} */
-export const labToolRegistry = {
+const labToolRegistry = {
   geography: { key: 'geography', loader: () => import('./GeographyLab') },
   math: { key: 'math', loader: () => import('./MathLab') },
   language: { key: 'language', loader: () => import('./LanguageLab') },
   chemistry: { key: 'chemistry', loader: () => import('./ChemistryLab') },
+  physics: { key: 'physics', loader: () => import('./PhysicsLab') },
   generic: { key: 'generic', loader: () => import('./GenericSubjectLab') },
 };
 
@@ -106,10 +107,15 @@ export default function SubjectWorkspace({ subject, language, selectedTool }) {
   useEffect(() => {
     let cancelled = false;
     const adapter = labToolRegistry[subject.adapterKey] || labToolRegistry.generic;
+    const resetId = window.setTimeout(() => {
+      if (cancelled) {
+        return;
+      }
 
-    setLoading(true);
-    setError('');
-    setComponent(null);
+      setLoading(true);
+      setError('');
+      setComponent(null);
+    }, 0);
 
     adapter.loader()
       .then((module) => {
@@ -133,6 +139,7 @@ export default function SubjectWorkspace({ subject, language, selectedTool }) {
 
     return () => {
       cancelled = true;
+      window.clearTimeout(resetId);
     };
   }, [subject.adapterKey]);
 

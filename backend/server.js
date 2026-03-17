@@ -16,6 +16,7 @@ import aiGameRoutes from './src/routes/aiGames.js';
 import scheduleUploadRoutes from './src/routes/scheduleUpload.js';
 import reflectionRoutes from './src/routes/reflections.js';
 import chemistryRoutes from './src/routes/chemistry.js';
+import mathHandwritingRoutes from './src/routes/mathHandwriting.js';
 import pool from './src/config/db.js';
 import { QuizModel } from './src/models/Quiz.js';
 import { GameResultModel } from './src/models/GameResult.js';
@@ -50,6 +51,7 @@ app.use('/api/ai-games', aiGameRoutes);
 app.use('/api/schedule-upload', scheduleUploadRoutes);
 app.use('/api/reflections', reflectionRoutes);
 app.use('/api/chemistry', chemistryRoutes);
+app.use('/api/math/handwriting', mathHandwritingRoutes);
 
 // Health check with diagnostics
 app.get('/health', async (req, res) => {

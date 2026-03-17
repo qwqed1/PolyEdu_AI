@@ -28,7 +28,7 @@
  * @property {LabPromptPreset[]} promptPresets
  * @property {MiniTaskConfig[]} miniTaskTemplates
  * @property {'deep' | 'catalog'} status
- * @property {'geography' | 'math' | 'language' | 'chemistry' | 'generic'} adapterKey
+ * @property {'geography' | 'math' | 'language' | 'chemistry' | 'physics' | 'generic'} adapterKey
  * @property {string} summaryRu
  * @property {string} summaryKk
  * @property {string[]} teacherMovesRu
@@ -109,10 +109,20 @@ adapterMoves.chemistry = {
   kk: ['Кестеден элементті ашыңыз.', 'Заттың 3D моделін жинаңыз.', 'Реактивтер мен өнімдерді салыстырыңыз.'],
 };
 
+adapterMoves.physics = {
+  ru: ['Покажите источник энергии.', 'Замкните контур проводниками.', 'Объясните, почему лампа загорелась.'],
+  kk: ['Энергия көзін көрсетіңіз.', 'Сымды қойып, тұйық тізбек құрыңыз.', 'Шам неге жанғанын түсіндіріңіз.'],
+};
+
 const chemistryTasks = [
   task('periodic-explorer', 'Исследование элемента', 'Элементті зерттеу', 'Найдите элемент в таблице и объясните его свойства.', 'Кестеден элементті тауып, қасиетін түсіндіріңіз.', 'Свяжите положение в таблице с электронными оболочками.', 'Кестедегі орнын электрон қабаттарымен байланыстырыңыз.', 'Есть готовый разбор элемента.', 'Элемент бойынша дайын талдау бар.'),
   task('molecule-3d', '3D молекула', '3D молекула', 'Откройте вещество и разберите его формулу.', 'Затты ашып, формуласын талдаңыз.', 'Найдите связи, формулу и 3D-форму.', 'Байланыстарын, формуласын және 3D пішінін табыңыз.', 'Формула и модель показаны вместе.', 'Формула мен модель бірге көрсетіледі.'),
   task('reaction-lab', 'Разбор реакции', 'Реакцияны талдау', 'Сравните два вещества и посмотрите продукты.', 'Екі затты салыстырып, өнімдерін көріңіз.', 'Опишите условия, тип реакции и наблюдаемый эффект.', 'Шартын, реакция типін және байқалатын әсерін сипаттаңыз.', 'Есть учебный разбор реакции.', 'Реакция бойынша оқу талдауы бар.'),
+];
+
+const physicsTasks = [
+  task('hand-circuit', 'Электрическая цепь', 'Электр тізбегі', 'Соберите простую цепь руками через камеру.', 'Камера арқылы қарапайым тізбекті қолмен жинаңыз.', 'Поставьте батарею, лампу и два проводника в нужные зоны.', 'Батареяны, шамды және екі сымды дұрыс орынға қойыңыз.', 'Замкнутая цепь показывает результат и объяснение.', 'Тұйық тізбек нәтиже мен түсіндіруді көрсетеді.'),
+  task('current-flow', 'Путь тока', 'Ток жолы', 'Покажите, как ток проходит по замкнутому контуру.', 'Токтың тұйық контурмен қалай өтетінін көрсетіңіз.', 'Объясните разницу между незамкнутой и замкнутой цепью.', 'Ашық және тұйық тізбектің айырмасын түсіндіріңіз.', 'Ученики видят причинно-следственную связь.', 'Оқушылар себеп-салдар байланысын көреді.'),
 ];
 
 function chemistryPreset(id, labelRu, labelKk, subjectRu) {
@@ -135,6 +145,8 @@ function subject(config) {
         ? languageTasks
         : config.adapterKey === 'chemistry'
           ? chemistryTasks
+          : config.adapterKey === 'physics'
+            ? physicsTasks
           : genericTasks;
 
   return {
@@ -149,17 +161,17 @@ function subject(config) {
 /** @type {LabSubjectConfig[]} */
 export const labCatalog = [
   subject({ key: 'geography', titleRu: 'География', titleKk: 'География', subjectFamily: 'social', grades: [...grades.middle, ...grades.high], curriculumAliases: ['Дүниежүзі географиясы', 'Қазақстан географиясы'], enabledTools: ['globe', 'capitals', 'regions'], status: 'deep', adapterKey: 'geography', summaryRu: '3D-глобус, столицы, маршруты и регионы Казахстана.', summaryKk: '3D глобус, астаналар, маршруттар және Қазақстан өңірлері.' }),
-  subject({ key: 'mathematics', titleRu: 'Математика', titleKk: 'Математика', subjectFamily: 'stem', grades: grades.all, curriculumAliases: ['Алгебра', 'Геометрия', 'Анализ бастамалары'], enabledTools: ['board', 'formula', 'graph'], status: 'deep', adapterKey: 'math', summaryRu: 'Доска, формулы и графики в одном workspace.', summaryKk: 'Бір workspace ішіндегі тақта, формула және график.' }),
+  subject({ key: 'mathematics', titleRu: 'Математика', titleKk: 'Математика', subjectFamily: 'stem', grades: grades.all, curriculumAliases: ['Алгебра', 'Геометрия', 'Анализ бастамалары'], enabledTools: ['board', 'air_board', 'formula', 'graph'], status: 'deep', adapterKey: 'math', summaryRu: 'Доска, формулы, hand-writing и графики в одном workspace.', summaryKk: 'Бір workspace ішіндегі тақта, hand-writing, формула және график.' }),
   subject({ key: 'kazakh-language', titleRu: 'Казахский язык', titleKk: 'Қазақ тілі', subjectFamily: 'languages', grades: grades.all, curriculumAliases: ['Қазақ тілі', 'Тіл дамыту'], enabledTools: ['reader', 'vocabulary', 'speaking'], status: 'deep', adapterKey: 'language', summaryRu: 'Чтение, словарь и устная практика.', summaryKk: 'Оқу, сөздік және ауызша практика.' }),
   subject({ key: 'russian-language', titleRu: 'Русский язык', titleKk: 'Орыс тілі', subjectFamily: 'languages', grades: grades.all, curriculumAliases: ['Русский язык', 'Речевое развитие'], enabledTools: ['reader', 'vocabulary', 'speaking'], status: 'deep', adapterKey: 'language', summaryRu: 'Текст, словарь и speaking-практика.', summaryKk: 'Мәтін, сөздік және speaking-практика.' }),
   subject({ key: 'english-language', titleRu: 'Английский язык', titleKk: 'Ағылшын тілі', subjectFamily: 'languages', grades: grades.all, curriculumAliases: ['English', 'Foreign language'], enabledTools: ['reader', 'vocabulary', 'speaking'], status: 'deep', adapterKey: 'language', summaryRu: 'Reading, vocabulary and speaking with AI feedback.', summaryKk: 'AI кері байланысымен reading, vocabulary және speaking.' }),
-  subject({ key: 'algebra', titleRu: 'Алгебра', titleKk: 'Алгебра', subjectFamily: 'stem', grades: [...grades.middle, ...grades.high], curriculumAliases: ['Функции', 'Уравнения'], enabledTools: ['board', 'formula', 'graph'], status: 'catalog', adapterKey: 'math', summaryRu: 'Алгебра в единой математической лаборатории.', summaryKk: 'Алгебра бірыңғай математикалық зертханада.' }),
-  subject({ key: 'geometry', titleRu: 'Геометрия', titleKk: 'Геометрия', subjectFamily: 'stem', grades: [...grades.middle, ...grades.high], curriculumAliases: ['Планиметрия', 'Стереометрия'], enabledTools: ['board', 'formula', 'graph'], status: 'catalog', adapterKey: 'math', summaryRu: 'Чертежи, доказательства и визуализация.', summaryKk: 'Сызбалар, дәлелдеулер және визуализация.' }),
+  subject({ key: 'algebra', titleRu: 'Алгебра', titleKk: 'Алгебра', subjectFamily: 'stem', grades: [...grades.middle, ...grades.high], curriculumAliases: ['Функции', 'Уравнения'], enabledTools: ['board', 'air_board', 'formula', 'graph'], status: 'catalog', adapterKey: 'math', summaryRu: 'Алгебра в единой математической лаборатории.', summaryKk: 'Алгебра бірыңғай математикалық зертханада.' }),
+  subject({ key: 'geometry', titleRu: 'Геометрия', titleKk: 'Геометрия', subjectFamily: 'stem', grades: [...grades.middle, ...grades.high], curriculumAliases: ['Планиметрия', 'Стереометрия'], enabledTools: ['board', 'air_board', 'formula', 'graph'], status: 'catalog', adapterKey: 'math', summaryRu: 'Чертежи, доказательства и визуализация.', summaryKk: 'Сызбалар, дәлелдеулер және визуализация.' }),
   subject({ key: 'history-kazakhstan', titleRu: 'История Казахстана', titleKk: 'Қазақстан тарихы', subjectFamily: 'social', grades: [...grades.middle, ...grades.high], curriculumAliases: ['Қазақстан тарихы'], enabledTools: ['overview', 'ai', 'tasks'], status: 'catalog', adapterKey: 'generic', summaryRu: 'Хронология, фигуры и причинно-следственные связи.', summaryKk: 'Хронология, тұлғалар және себеп-салдар байланысы.' }),
   subject({ key: 'world-history', titleRu: 'Всемирная история', titleKk: 'Дүниежүзі тарихы', subjectFamily: 'social', grades: [...grades.middle, ...grades.high], curriculumAliases: ['Всеобщая история'], enabledTools: ['overview', 'ai', 'tasks'], status: 'catalog', adapterKey: 'generic', summaryRu: 'Эпохи, события и сравнение исторических процессов.', summaryKk: 'Дәуірлер, оқиғалар және тарихи процестерді салыстыру.' }),
   subject({ key: 'biology', titleRu: 'Биология', titleKk: 'Биология', subjectFamily: 'science', grades: [...grades.middle, ...grades.high], curriculumAliases: ['Анатомия', 'Экология'], enabledTools: ['overview', 'ai', 'tasks'], status: 'catalog', adapterKey: 'generic', summaryRu: 'Процессы, классификация и научное объяснение.', summaryKk: 'Процестер, жіктеу және ғылыми түсіндіру.' }),
   subject({ key: 'chemistry', titleRu: 'Химия', titleKk: 'Химия', subjectFamily: 'science', grades: [...grades.middle, ...grades.high], curriculumAliases: ['Органическая химия', 'Неорганическая химия'], enabledTools: ['overview', 'ai', 'tasks'], status: 'catalog', adapterKey: 'generic', summaryRu: 'Формулы, реакции и свойства веществ.', summaryKk: 'Формула, реакция және зат қасиеті.' }),
-  subject({ key: 'physics', titleRu: 'Физика', titleKk: 'Физика', subjectFamily: 'science', grades: [...grades.middle, ...grades.high], curriculumAliases: ['Механика', 'Электродинамика'], enabledTools: ['overview', 'ai', 'tasks'], status: 'catalog', adapterKey: 'generic', summaryRu: 'Законы, модели и объяснение явлений.', summaryKk: 'Заңдар, модельдер және құбылыстарды түсіндіру.' }),
+  subject({ key: 'physics', titleRu: 'Физика', titleKk: 'Физика', subjectFamily: 'science', grades: [...grades.middle, ...grades.high], curriculumAliases: ['Механика', 'Электродинамика'], enabledTools: ['hand_circuit'], status: 'deep', adapterKey: 'physics', summaryRu: 'Hand-tracking сборка электрической цепи внутри лаборатории.', summaryKk: 'Зертханада hand-tracking арқылы электр тізбегін жинау.' }),
   subject({ key: 'informatics', titleRu: 'Информатика', titleKk: 'Информатика', subjectFamily: 'stem', grades: [...grades.middle, ...grades.high], curriculumAliases: ['Алгоритмы', 'Программирование'], enabledTools: ['overview', 'ai', 'tasks'], status: 'catalog', adapterKey: 'generic', summaryRu: 'Алгоритмы, цифровые навыки и логика.', summaryKk: 'Алгоритмдер, цифрлық дағдылар және логика.' }),
   subject({ key: 'natural-science', titleRu: 'Естествознание', titleKk: 'Жаратылыстану', subjectFamily: 'science', grades: grades.primary, curriculumAliases: ['Science', 'Окружающий мир'], enabledTools: ['overview', 'ai', 'tasks'], status: 'catalog', adapterKey: 'generic', summaryRu: 'Наблюдение, вопросы и простое исследование.', summaryKk: 'Бақылау, сұрақтар және қарапайым зерттеу.' }),
   subject({ key: 'kazakh-literature', titleRu: 'Казахская литература', titleKk: 'Қазақ әдебиеті', subjectFamily: 'languages', grades: [...grades.middle, ...grades.high], curriculumAliases: ['Әдебиет'], enabledTools: ['overview', 'ai', 'tasks'], status: 'catalog', adapterKey: 'generic', summaryRu: 'Образы, цитаты и авторская позиция.', summaryKk: 'Бейнелер, цитаталар және автор ұстанымы.' }),
@@ -175,7 +187,7 @@ const chemistrySubject = labCatalog.find((subject) => subject.key === 'chemistry
 
 if (chemistrySubject) {
   Object.assign(chemistrySubject, {
-    enabledTools: ['periodic', 'molecule', 'reactions'],
+    enabledTools: ['hand_molecule', 'periodic', 'molecule', 'reactions'],
     promptPresets: [
       chemistryPreset('chemistry-core', '3D молекулы и реакции', '3D молекулалар мен реакциялар', chemistrySubject.titleRu),
       chemistryPreset('chemistry-lab', 'Учебная химическая лаборатория', 'Оқу химиялық зертхана', chemistrySubject.titleRu),
@@ -187,6 +199,16 @@ if (chemistrySubject) {
     summaryKk: 'Бір workspace ішінде Менделеев кестесі, 3D молекулалар және мектептік реакция каталогы.',
     teacherMovesRu: adapterMoves.chemistry.ru,
     teacherMovesKk: adapterMoves.chemistry.kk,
+  });
+}
+
+const physicsSubject = labCatalog.find((subject) => subject.key === 'physics');
+
+if (physicsSubject) {
+  Object.assign(physicsSubject, {
+    miniTaskTemplates: physicsTasks,
+    teacherMovesRu: adapterMoves.physics.ru,
+    teacherMovesKk: adapterMoves.physics.kk,
   });
 }
 

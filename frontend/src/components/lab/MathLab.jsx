@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Excalidraw } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
 import 'mathlive';
@@ -6,6 +6,7 @@ import { AlertCircle, FunctionSquare, PenTool, Sigma } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getLocalizedText } from '../../data/labCatalog';
 import { loadExternalScript } from '../../utils/loadExternalScript';
+import AirBoardPanel from './hand/AirBoardPanel';
 
 const EXCALIDRAW_STORAGE_KEY = 'lab:math:board';
 const FORMULA_STORAGE_KEY = 'lab:math:formula';
@@ -24,7 +25,7 @@ export default function MathLab({ language, selectedTool }) {
   const { theme } = useTheme();
   const mathFieldRef = useRef(null);
   const ggbContainerRef = useRef(null);
-  const ggbIdRef = useRef(`geogebra-${Math.random().toString(36).slice(2)}`);
+  const ggbId = `geogebra-${useId().replace(/:/g, '')}`;
   const [formulaValue, setFormulaValue] = useState(() => localStorage.getItem(FORMULA_STORAGE_KEY) || 'f(x)=x^2-4x+3');
   const [teacherNote, setTeacherNote] = useState(() => localStorage.getItem(NOTE_STORAGE_KEY) || '');
   const [graphError, setGraphError] = useState('');
@@ -76,10 +77,10 @@ export default function MathLab({ language, selectedTool }) {
             showResetIcon: true,
             enableShiftDragZoom: true,
           },
-          true
+          true,
         );
 
-        applet.inject(ggbIdRef.current);
+        applet.inject(ggbId);
         setGraphError('');
       })
       .catch((error) => setGraphError(error.message));
@@ -87,9 +88,19 @@ export default function MathLab({ language, selectedTool }) {
     return () => {
       destroyed = true;
     };
-  }, [selectedTool]);
+  }, [ggbId, selectedTool]);
 
   const formulaExamples = ['y=x^2-4x+3', 'y=2x+5', 'y=sin(x)'];
+
+  if (selectedTool === 'air_board') {
+    return (
+      <AirBoardPanel
+        formulaValue={formulaValue}
+        setFormulaValue={setFormulaValue}
+        language={language}
+      />
+    );
+  }
 
   return (
     <div className="space-y-5 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-dark-border dark:bg-dark-surface">
@@ -128,7 +139,7 @@ export default function MathLab({ language, selectedTool }) {
                         currentItemStrokeColor: appState.currentItemStrokeColor,
                         currentItemBackgroundColor: appState.currentItemBackgroundColor,
                       },
-                    })
+                    }),
                   );
                 }}
                 theme={theme === 'dark' ? 'dark' : 'light'}
@@ -190,7 +201,7 @@ export default function MathLab({ language, selectedTool }) {
               {language === 'kk' ? 'Мұғалімге идеялар' : 'Идеи для преподавателя'}
             </div>
             <ul className="mt-4 space-y-3 text-sm leading-6 text-neutral-700 dark:text-neutral-200">
-              <li>{language === 'kk' ? 'Формуланы оқушы тілімен айтқызыңыз.' : 'Попросите ученика проговорить формулу своими словами.'}</li>
+              <li>{language === 'kk' ? 'Формуланы оқушы тілімен айтыңызыз.' : 'Попросите ученика проговорить формулу своими словами.'}</li>
               <li>{language === 'kk' ? 'Әр белгілеудің мағынасын талдатыңыз.' : 'Разберите смысл каждого обозначения.'}</li>
               <li>{language === 'kk' ? 'Келесі қадамда формуланы графикке ауыстырыңыз.' : 'Следующим шагом переведите формулу в график.'}</li>
             </ul>
@@ -207,7 +218,7 @@ export default function MathLab({ language, selectedTool }) {
                 <p className="text-sm leading-6 text-neutral-600 dark:text-neutral-300">{graphError}</p>
               </div>
             ) : (
-              <div id={ggbIdRef.current} ref={ggbContainerRef} className="min-h-[430px] w-full overflow-hidden rounded-2xl" />
+              <div id={ggbId} ref={ggbContainerRef} className="min-h-[430px] w-full overflow-hidden rounded-2xl" />
             )}
           </div>
 
