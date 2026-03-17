@@ -11,6 +11,7 @@ import {
   HAND_TRACKING_SMOOTHING_ALPHA,
   HAND_TRACKING_WASM_ROOT,
 } from './handTrackingConfig';
+import { HAND_CONNECTIONS } from './handLandmarkConstants';
 
 function distance(a, b) {
   if (!a || !b) {
@@ -316,9 +317,9 @@ export function drawHandTrackingOverlay(canvasElement, hands, faceBoxes = []) {
     context.strokeStyle = stroke;
     context.fillStyle = fill;
 
-    HandLandmarker.HAND_CONNECTIONS.forEach(([startIndex, endIndex]) => {
-      const startPoint = hand.landmarks[startIndex];
-      const endPoint = hand.landmarks[endIndex];
+    HAND_CONNECTIONS.forEach((connection) => {
+      const startPoint = hand.landmarks[connection.start];
+      const endPoint = hand.landmarks[connection.end];
 
       if (!startPoint || !endPoint) {
         return;

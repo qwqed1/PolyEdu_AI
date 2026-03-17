@@ -408,7 +408,9 @@ export default function LabArenaPage() {
   const isTrackingError = runtime.state === 'error';
   const pinchActive = runtime.frame.hands.some((hand) => hand.pinchState === 'pinching');
   const serviceStatusText =
-    runtime.wsState === 'connected' && runtime.pythonState === 'ready'
+    runtime.wsState === 'browser' && runtime.pythonState === 'browser'
+      ? (language === 'kk' ? 'Local browser tracking ready' : 'Local browser tracking ready')
+      : runtime.wsState === 'connected' && runtime.pythonState === 'ready'
       ? (language === 'kk' ? 'Python vision service ready' : 'Python vision service ready')
       : runtime.wsState === 'connecting' || runtime.pythonState === 'loading'
         ? (language === 'kk' ? 'Connecting Python service' : 'Connecting Python service')

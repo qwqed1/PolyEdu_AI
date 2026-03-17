@@ -9,7 +9,11 @@ import {
   getVisionWsUrl,
 } from './handTrackingConfig';
 import { drawVisionOverlay } from './handLandmarkConstants';
+import { useBrowserHandTrackingRuntime } from './useBrowserHandTrackingRuntime';
 import { useHandTrackingCamera } from './useHandTrackingCamera';
+
+const DEFAULT_VISION_WS_URL = getVisionWsUrl();
+const SHOULD_USE_PYTHON_RUNTIME = Boolean(DEFAULT_VISION_WS_URL);
 
 function createInitialFrame() {
   return {
@@ -70,7 +74,7 @@ function canvasToJpegBuffer(canvas, quality) {
   });
 }
 
-export function useHandTrackingRuntime({ autoStart = true } = {}) {
+function usePythonHandTrackingRuntime({ autoStart = true } = {}) {
   const videoRef = useRef(null);
   const overlayRef = useRef(null);
   const captureCanvasRef = useRef(null);
@@ -205,7 +209,7 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
   }, [syncOverlaySize]);
 
   const connectVisionSocket = useCallback(() => new Promise((resolve, reject) => {
-    const wsUrl = getVisionWsUrl();
+    const wsUrl = DEFAULT_VISION_WS_URL || getVisionWsUrl();
     if (!wsUrl) {
       reject(new Error('Vision WebSocket URL is not configured'));
       return;
@@ -456,4 +460,12 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
     stop,
     restart,
   };
+}
+
+const useSelectedHandTrackingRuntime = SHOULD_USE_PYTHON_RUNTIME
+  ? usePythonHandTrackingRuntime
+  : useBrowserHandTrackingRuntime;
+
+export function useHandTrackingRuntime(options = {}) {
+  return useSelectedHandTrackingRuntime(options);
 }
