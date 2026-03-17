@@ -24,13 +24,13 @@ class OpenRouterService {
     });
 
     // Текстовая модель — для чата, квизов
-    this.textModel = process.env.OPENROUTER_TEXT_MODEL || 'openai/gpt-4.5:free';
+    this.textModel = process.env.OPENROUTER_TEXT_MODEL || 'openrouter/free';
 
     // Модель кодирования — для генерации HTML-игр
     this.coderModel = process.env.OPENROUTER_CODER_MODEL || 'qwen/qwen3-coder-480b-a35b:free';
 
     // Модель для планов уроков — стабильный JSON
-    this.lessonModel = process.env.OPENROUTER_LESSON_MODEL || 'google/gemma-3-27b-it:free';
+    this.lessonModel = process.env.OPENROUTER_LESSON_MODEL || 'openrouter/free';
 
     console.log(`[OpenRouter] Text model:   ${this.textModel}`);
     console.log(`[OpenRouter] Coder model:  ${this.coderModel}`);

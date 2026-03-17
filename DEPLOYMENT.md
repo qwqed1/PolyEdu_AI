@@ -37,9 +37,9 @@
 6. **В разделе Environment Variables (Переменные окружения)** добавьте значения вашего бэкенда:
    - `JWT_SECRET` = `(любая длинная случайная строка)`
    - `OPENROUTER_API_KEY` = `(ваш ключ OpenRouter)`
-   - `OPENROUTER_TEXT_MODEL` = `openai/gpt-oss-120b:free`
+- `OPENROUTER_TEXT_MODEL` = `openrouter/free`
    - `OPENROUTER_CODER_MODEL` = `arcee-ai/trinity-large-preview:free`
-   - `OPENROUTER_LESSON_MODEL` = `google/gemma-3-27b-it:free`
+   - `OPENROUTER_LESSON_MODEL` = `openrouter/free`
    - `DATABASE_URL` = `(строка подключения из Supabase из Шага 1. Убедитесь что она начинается с postgresql:// ...)`
    *Примечание: `VITE_API_URL` добавлять **НЕ НУЖНО**, так как мы создали файл `.env.production`, который использует локальный `/api` (Vercel сам проксирует запросы).*
 7. Нажмите **Deploy**.
