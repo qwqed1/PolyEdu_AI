@@ -356,12 +356,16 @@ export default function LabArenaPage() {
   const { language } = useLanguage();
   const [searchParams] = useSearchParams();
   const runtime = useHandTrackingRuntime();
-  const stopRuntime = runtime.stop;
+  const stopRuntimeRef = useRef(runtime.stop);
   const isModeValid = ['chemistry', 'physics', 'math'].includes(mode || '');
   const activeMode = isModeValid ? mode : 'chemistry';
   const copy = getModeCopy(language, activeMode);
   const subjectFromQuery = searchParams.get('subject');
   const subjectForBack = subjectFromQuery || (activeMode === 'math' ? 'mathematics' : activeMode);
+
+  useEffect(() => {
+    stopRuntimeRef.current = runtime.stop;
+  }, [runtime.stop]);
 
   const [timeLeft, setTimeLeft] = useState(ROUND_SECONDS);
   const [score, setScore] = useState(0);
@@ -406,8 +410,8 @@ export default function LabArenaPage() {
             : (language === 'kk' ? 'Бет тексеруі күтілуде' : 'Проверяем лицо');
 
   useEffect(() => () => {
-    stopRuntime();
-  }, [stopRuntime]);
+    stopRuntimeRef.current?.();
+  }, []);
 
   useEffect(() => {
     setTimeLeft(ROUND_SECONDS);
