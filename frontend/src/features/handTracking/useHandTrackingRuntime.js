@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import {
-  HAND_TRACKING_EMIT_INTERVAL_MS,
   HAND_TRACKING_FACE_CHECK_INTERVAL_MS,
+  HAND_TRACKING_EMIT_INTERVAL_MS,
   HAND_TRACKING_LOST_HAND_MS,
 } from './handTrackingConfig';
 import {
-  closeHandLandmarker,
-  createHandLandmarker,
   detectHandsForVideo,
   drawHandTrackingOverlay,
   normalizeFaceBoxes,
   normalizeHandTrackingResult,
+  createHandLandmarker,
+  closeHandLandmarker,
 } from './handTrackingService';
 import { useHandTrackingCamera } from './useHandTrackingCamera';
+import { useVisionRealtimeLoop } from './useVisionRealtimeLoop';
 
 function buildInitialFrame() {
   return {
@@ -23,17 +24,18 @@ function buildInitialFrame() {
     faceTrackingStatus: 'idle',
     fps: 0,
     timestamp: 0,
+    debug: {
+      faces: 0,
+      cameraState: 'idle',
+      modelState: 'idle',
+    },
   };
 }
 
 export function useHandTrackingRuntime({ autoStart = true } = {}) {
   const videoRef = useRef(null);
   const overlayRef = useRef(null);
-  const landmarkerRef = useRef(null);
-  const animationFrameRef = useRef(null);
   const previousHandsRef = useRef({});
-  const lastEmitRef = useRef(0);
-  const lastFrameTimestampRef = useRef(0);
   const lastSeenAtRef = useRef({});
   const faceDetectorRef = useRef(undefined);
   const faceCheckInFlightRef = useRef(false);
@@ -49,26 +51,10 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
     requestCamera,
     stopCamera,
   } = useHandTrackingCamera(videoRef);
-  const [modelState, setModelState] = useState('idle');
-  const [frame, setFrame] = useState(() => buildInitialFrame());
-  const [errorKey, setErrorKey] = useState('');
 
-  const stopLoop = useCallback(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-
-    drawHandTrackingOverlay(overlayRef.current, [], []);
-  }, []);
-
-  const stop = useCallback(() => {
-    stopLoop();
-    stopCamera();
+  const clearRuntimeRefs = useCallback(() => {
     previousHandsRef.current = {};
     lastSeenAtRef.current = {};
-    lastEmitRef.current = 0;
-    lastFrameTimestampRef.current = 0;
     lastFaceCheckRef.current = 0;
     faceCheckInFlightRef.current = false;
     faceSnapshotRef.current = {
@@ -76,9 +62,7 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
       faceBoxes: [],
       faceTrackingStatus: 'idle',
     };
-    setFrame(buildInitialFrame());
-    setErrorKey('');
-  }, [stopCamera, stopLoop]);
+  }, []);
 
   const ensureFaceDetector = useCallback(() => {
     if (faceDetectorRef.current !== undefined) {
@@ -103,221 +87,127 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
     return faceDetectorRef.current;
   }, []);
 
-  const ensureLandmarker = useCallback(async () => {
-    if (landmarkerRef.current) {
-      return true;
-    }
-
-    setModelState('loading');
-
-    try {
-      landmarkerRef.current = await createHandLandmarker();
-      setModelState('ready');
-      return true;
-    } catch (error) {
-      console.error('Failed to initialize hand tracking model', error);
-      setModelState('error');
-      setErrorKey('modelUnavailable');
-      return false;
-    }
-  }, []);
-
-  const syncOverlaySize = useCallback(() => {
-    const videoElement = videoRef.current;
-    const overlayElement = overlayRef.current;
-
-    if (!videoElement || !overlayElement || !videoElement.videoWidth || !videoElement.videoHeight) {
-      return;
-    }
-
+  const detectFrame = useCallback(({ processor, videoElement, now }) => {
+    const faceDetector = ensureFaceDetector();
     if (
-      overlayElement.width !== videoElement.videoWidth ||
-      overlayElement.height !== videoElement.videoHeight
+      faceDetector &&
+      !faceCheckInFlightRef.current &&
+      now - lastFaceCheckRef.current >= HAND_TRACKING_FACE_CHECK_INTERVAL_MS
     ) {
-      overlayElement.width = videoElement.videoWidth;
-      overlayElement.height = videoElement.videoHeight;
+      faceCheckInFlightRef.current = true;
+      lastFaceCheckRef.current = now;
+
+      faceDetector.detect(videoElement)
+        .then((faces) => {
+          faceSnapshotRef.current = {
+            faces: faces.length,
+            faceBoxes: normalizeFaceBoxes(faces, videoElement),
+            faceTrackingStatus: faces.length ? 'tracking' : 'searching',
+          };
+        })
+        .catch((error) => {
+          console.warn('Face detection failed', error);
+          faceSnapshotRef.current = {
+            faces: 0,
+            faceBoxes: [],
+            faceTrackingStatus: 'error',
+          };
+        })
+        .finally(() => {
+          faceCheckInFlightRef.current = false;
+        });
+    } else if (!faceDetector) {
+      faceSnapshotRef.current = {
+        faces: 0,
+        faceBoxes: [],
+        faceTrackingStatus: 'unsupported',
+      };
     }
+
+    const result = detectHandsForVideo(processor, videoElement, now);
+    const normalized = normalizeHandTrackingResult(result, previousHandsRef.current);
+    const trackedIds = new Set(normalized.hands.map((hand) => hand.id));
+
+    normalized.hands.forEach((hand) => {
+      lastSeenAtRef.current[hand.id] = now;
+    });
+
+    Object.keys(previousHandsRef.current).forEach((handId) => {
+      const recentlySeen = now - (lastSeenAtRef.current[handId] || 0) < HAND_TRACKING_LOST_HAND_MS;
+      if (!trackedIds.has(handId) && recentlySeen) {
+        normalized.hands.push(previousHandsRef.current[handId]);
+      }
+    });
+
+    previousHandsRef.current = normalized.hands.reduce((accumulator, hand) => {
+      accumulator[hand.id] = hand;
+      return accumulator;
+    }, {});
+
+    return {
+      hands: normalized.hands,
+      faceBoxes: faceSnapshotRef.current.faceBoxes,
+      trackingStatus: normalized.hands.length ? 'tracking' : 'searching',
+      faces: faceSnapshotRef.current.faces,
+      faceTrackingStatus: faceSnapshotRef.current.faceTrackingStatus,
+    };
+  }, [ensureFaceDetector]);
+
+  const drawFrame = useCallback(({ overlayElement, frame }) => {
+    drawHandTrackingOverlay(overlayElement, frame.hands, frame.faceBoxes);
   }, []);
 
-  const startLoop = useCallback(() => {
-    if (animationFrameRef.current || !landmarkerRef.current) {
-      return;
-    }
+  const realtime = useVisionRealtimeLoop({
+    autoStart,
+    videoRef,
+    overlayRef,
+    initialFrame: buildInitialFrame,
+    emitIntervalMs: HAND_TRACKING_EMIT_INTERVAL_MS,
+    requestCamera,
+    stopCamera,
+    cameraState,
+    cameraErrorKey,
+    createProcessor: createHandLandmarker,
+    closeProcessor: closeHandLandmarker,
+    detectFrame,
+    drawFrame,
+  });
 
-    const tick = () => {
-      const now = performance.now();
-      const videoElement = videoRef.current;
-      if (!videoElement || videoElement.readyState < 2) {
-        animationFrameRef.current = requestAnimationFrame(tick);
-        return;
-      }
+  const stop = useCallback(() => {
+    clearRuntimeRefs();
+    realtime.stop();
+  }, [clearRuntimeRefs, realtime]);
 
-      syncOverlaySize();
-
-      const faceDetector = ensureFaceDetector();
-      if (
-        faceDetector &&
-        videoElement &&
-        videoElement.readyState >= 2 &&
-        !faceCheckInFlightRef.current &&
-        now - lastFaceCheckRef.current >= HAND_TRACKING_FACE_CHECK_INTERVAL_MS
-      ) {
-        faceCheckInFlightRef.current = true;
-        lastFaceCheckRef.current = now;
-
-        faceDetector.detect(videoElement)
-          .then((faces) => {
-            faceSnapshotRef.current = {
-              faces: faces.length,
-              faceBoxes: normalizeFaceBoxes(faces, videoElement),
-              faceTrackingStatus: faces.length ? 'tracking' : 'searching',
-            };
-          })
-          .catch((error) => {
-            console.warn('Face detection failed', error);
-            faceSnapshotRef.current = {
-              faces: 0,
-              faceBoxes: [],
-              faceTrackingStatus: 'error',
-            };
-          })
-          .finally(() => {
-            faceCheckInFlightRef.current = false;
-          });
-      } else if (!faceDetector) {
-        faceSnapshotRef.current = {
-          faces: 0,
-          faceBoxes: [],
-          faceTrackingStatus: 'unsupported',
-        };
-      }
-
-      let result = null;
-
-      try {
-        result = detectHandsForVideo(landmarkerRef.current, videoElement, now);
-      } catch (error) {
-        console.error('Hand tracking frame failed', error);
-        setErrorKey('modelUnavailable');
-        setModelState('error');
-        animationFrameRef.current = null;
-        return;
-      }
-
-      const normalized = normalizeHandTrackingResult(result, previousHandsRef.current);
-      const trackedIds = new Set(normalized.hands.map((hand) => hand.id));
-
-      normalized.hands.forEach((hand) => {
-        lastSeenAtRef.current[hand.id] = now;
-      });
-
-      Object.keys(previousHandsRef.current).forEach((handId) => {
-        if (!trackedIds.has(handId) && now - (lastSeenAtRef.current[handId] || 0) < HAND_TRACKING_LOST_HAND_MS) {
-          normalized.hands.push(previousHandsRef.current[handId]);
-        }
-      });
-
-      const handsMap = normalized.hands.reduce((accumulator, hand) => {
-        accumulator[hand.id] = hand;
-        return accumulator;
-      }, {});
-
-      previousHandsRef.current = handsMap;
-      drawHandTrackingOverlay(overlayRef.current, normalized.hands, faceSnapshotRef.current.faceBoxes);
-
-      if (now - lastEmitRef.current >= HAND_TRACKING_EMIT_INTERVAL_MS) {
-        const fps = lastFrameTimestampRef.current
-          ? Math.round(1000 / Math.max(now - lastFrameTimestampRef.current, 1))
-          : 0;
-
-        setFrame({
-          hands: normalized.hands,
-          faceBoxes: faceSnapshotRef.current.faceBoxes,
-          trackingStatus: normalized.hands.length ? 'tracking' : 'searching',
-          faces: faceSnapshotRef.current.faces,
-          faceTrackingStatus: faceSnapshotRef.current.faceTrackingStatus,
-          fps,
-          timestamp: now,
-        });
-
-        lastEmitRef.current = now;
-        lastFrameTimestampRef.current = now;
-      }
-
-      animationFrameRef.current = requestAnimationFrame(tick);
-    };
-
-    animationFrameRef.current = requestAnimationFrame(tick);
-  }, [ensureFaceDetector, syncOverlaySize]);
+  const start = useCallback(async () => {
+    clearRuntimeRefs();
+    return realtime.start();
+  }, [clearRuntimeRefs, realtime]);
 
   const restart = useCallback(async () => {
-    stop();
+    clearRuntimeRefs();
+    return realtime.restart();
+  }, [clearRuntimeRefs, realtime]);
 
-    const camera = await requestCamera();
-    if (!camera.ok) {
-      setErrorKey(camera.errorKey);
-      return false;
-    }
-
-    const videoElement = videoRef.current;
-    if (!videoElement || videoElement.readyState < 2) {
-      setErrorKey('cameraUnavailable');
-      return false;
-    }
-
-    faceSnapshotRef.current = {
-      faces: 0,
-      faceBoxes: [],
-      faceTrackingStatus: ensureFaceDetector() ? 'searching' : 'unsupported',
-    };
-
-    const modelReady = await ensureLandmarker();
-    if (!modelReady) {
-      return false;
-    }
-
-    startLoop();
-    return true;
-  }, [ensureFaceDetector, ensureLandmarker, requestCamera, startLoop, stop]);
-
-  useEffect(() => {
-    if (!autoStart) {
-      return undefined;
-    }
-
-    const startId = window.setTimeout(() => {
-      restart();
-    }, 0);
-
-    return () => {
-      window.clearTimeout(startId);
-      stop();
-      closeHandLandmarker(landmarkerRef.current);
-      landmarkerRef.current = null;
-      faceDetectorRef.current = undefined;
-    };
-  }, [autoStart, restart, stop]);
-
-  const trackingState = useMemo(() => {
-    if (errorKey || cameraErrorKey || modelState === 'error') {
-      return 'error';
-    }
-
-    if (cameraState === 'requesting' || modelState === 'loading') {
-      return 'initializing';
-    }
-
-    return frame.trackingStatus;
-  }, [cameraErrorKey, cameraState, errorKey, frame.trackingStatus, modelState]);
+  const frame = useMemo(() => ({
+    ...realtime.frame,
+    debug: {
+      faces: realtime.frame.faces,
+      cameraState: realtime.cameraState,
+      modelState: realtime.modelState,
+    },
+  }), [realtime.cameraState, realtime.frame, realtime.modelState]);
 
   return {
     videoRef,
     overlayRef,
     frame,
-    cameraState,
-    modelState,
-    trackingState,
-    errorKey: errorKey || cameraErrorKey,
+    cameraState: realtime.cameraState,
+    modelState: realtime.modelState,
+    trackingState: realtime.state,
+    state: realtime.state,
+    errorKey: realtime.error,
+    error: realtime.error,
+    start,
     restart,
     stop,
   };

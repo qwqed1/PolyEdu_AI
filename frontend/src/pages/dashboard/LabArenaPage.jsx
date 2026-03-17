@@ -392,8 +392,8 @@ export default function LabArenaPage() {
     isComplete: physicsComplete,
     resetScene: resetPhysicsScene,
   } = physicsState;
-  const isInitializing = runtime.trackingState === 'initializing';
-  const isTrackingError = runtime.trackingState === 'error';
+  const isInitializing = runtime.state === 'initializing';
+  const isTrackingError = runtime.state === 'error';
   const faceStatusText =
     runtime.frame.faceTrackingStatus === 'tracking'
       ? (language === 'kk' ? 'Бет кадрда' : 'Лицо в кадре')
@@ -618,6 +618,10 @@ export default function LabArenaPage() {
         <div className="grid grid-cols-2 gap-2 border-t border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/70">
           <div>{language === 'kk' ? `Қол: ${runtime.frame.hands.length}` : `Руки: ${runtime.frame.hands.length}`}</div>
           <div>{language === 'kk' ? `Бет: ${runtime.frame.faces}` : `Лица: ${runtime.frame.faces}`}</div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 border-t border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60">
+          <div>{`Camera: ${runtime.cameraState}`}</div>
+          <div>{`Model: ${runtime.modelState}`}</div>
         </div>
       </div>
 
