@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Link } from 'react-router-dom';
 import Card from '../../components/common/Card';
-import { User, Building2, Briefcase, Mail, Bot, Users, GraduationCap, Calendar, BarChart2, Book, Gamepad2, FlaskConical } from 'lucide-react';
+import { User, Building2, Briefcase, Mail, Bot, Users, GraduationCap, Calendar, BarChart2, Book, Gamepad2, FlaskConical, Sparkles } from 'lucide-react';
 import statsService from '../../services/statsService';
 
 export default function TeacherDashboardPage() {
@@ -133,7 +133,7 @@ export default function TeacherDashboardPage() {
 
         <Card>
           <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-4">Быстрые действия</h3>
-          <div className="grid sm:grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid sm:grid-cols-2 md:grid-cols-6 gap-4">
             <Link to="/groups" className="p-4 border-2 border-neutral-200 dark:border-dark-border rounded-lg hover:border-primary-600 dark:hover:border-primary-500 transition-default text-center group">
               <div className="flex items-center justify-center mb-2 text-primary-600 dark:text-primary-400 group-hover:scale-110 transition-transform"><Users className="w-8 h-8" /></div>
               <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Группы</p>
@@ -149,6 +149,10 @@ export default function TeacherDashboardPage() {
             <Link to="/lab" className="p-4 border-2 border-neutral-200 dark:border-dark-border rounded-lg hover:border-primary-600 dark:hover:border-primary-500 transition-default text-center group">
               <div className="flex items-center justify-center mb-2 text-primary-600 dark:text-primary-400 group-hover:scale-110 transition-transform"><FlaskConical className="w-8 h-8" /></div>
               <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t.nav.lab}</p>
+            </Link>
+            <Link to="/brain-break" className="p-4 border-2 border-neutral-200 dark:border-dark-border rounded-lg hover:border-emerald-500 dark:hover:border-emerald-400 transition-default text-center group">
+              <div className="flex items-center justify-center mb-2 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform"><Sparkles className="w-8 h-8" /></div>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t.nav.brainBreak}</p>
             </Link>
             <Link to="/ai-chat" className="p-4 border-2 border-neutral-200 dark:border-dark-border rounded-lg hover:border-primary-600 dark:hover:border-primary-500 transition-default text-center group">
               <div className="flex items-center justify-center mb-2">

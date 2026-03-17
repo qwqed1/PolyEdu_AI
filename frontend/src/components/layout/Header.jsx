@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { 
   Sun, Moon, Menu, X, User, LogOut, ChevronDown, BookOpen, 
   GraduationCap, Award, Share2, Calendar, Globe, Gamepad2,
-  BarChart3, Bot, Users, FileText, Shuffle, FlaskConical
+  BarChart3, Bot, Users, FileText, Shuffle, FlaskConical, Sparkles
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -110,6 +110,14 @@ export default function Header() {
                         >
                           <Shuffle className="w-4 h-4 text-cyan-500" />
                           {t.nav.groupSplitter || 'Деление на группы'}
+                        </Link>
+                        <Link 
+                          to="/brain-break" 
+                          onClick={() => setToolsDropdownOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-default"
+                        >
+                          <Sparkles className="w-4 h-4 text-emerald-500" />
+                          {t.nav.brainBreak}
                         </Link>
                       </div>
                     )}
@@ -237,6 +245,10 @@ export default function Header() {
                     <Link to="/group-splitter" className="px-3 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-default flex items-center gap-2">
                       <Shuffle className="w-4 h-4" />
                       {t.nav.groupSplitter || 'Деление на группы'}
+                    </Link>
+                    <Link to="/brain-break" className="px-3 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-default flex items-center gap-2">
+                      <Sparkles className="w-4 h-4" />
+                      {t.nav.brainBreak}
                     </Link>
                   </>
                 ) : (

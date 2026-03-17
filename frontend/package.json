@@ -12,6 +12,7 @@
   "dependencies": {
     "@chemistry/elements": "^3.1.1",
     "@excalidraw/excalidraw": "^0.18.0",
+    "@mediapipe/tasks-vision": "^0.10.32",
     "3dmol": "^2.5.4",
     "axios": "^1.13.2",
     "chemical-elements": "^2.2.2",

@@ -30,6 +30,7 @@ import StudentGamesPage from './pages/dashboard/StudentGamesPage';
 import StudentReflectionsPage from './pages/dashboard/StudentReflectionsPage';
 import TeacherLobbyPage from './pages/dashboard/TeacherLobbyPage';
 const LabPage = lazy(() => import('./pages/dashboard/LabPage'));
+const BrainBreakPage = lazy(() => import('./pages/dashboard/BrainBreakPage'));
 
 function RoleDashboardPage() {
   const { user } = useAuth();
@@ -76,6 +77,14 @@ function App() {
             {/* Игровые страницы (без Header/Footer) */}
             <Route path="/join" element={<JoinGamePage />} />
             <Route path="/play/:code" element={<PlayGamePage />} />
+            <Route
+              path="/brain-break"
+              element={
+                <PrivateRoute roles={['teacher']}>
+                  <BrainBreakPage />
+                </PrivateRoute>
+              }
+            />
 
             {/* Остальные страницы с Header/Footer */}
             <Route
