@@ -355,6 +355,7 @@ export default function LabArenaPage() {
   const { language } = useLanguage();
   const [searchParams] = useSearchParams();
   const runtime = useHandTrackingRuntime();
+  const stopRuntime = runtime.stop;
   const isModeValid = ['chemistry', 'physics', 'math'].includes(mode || '');
   const activeMode = isModeValid ? mode : 'chemistry';
   const copy = getModeCopy(language, activeMode);
@@ -392,6 +393,20 @@ export default function LabArenaPage() {
   } = physicsState;
   const isInitializing = runtime.trackingState === 'initializing';
   const isTrackingError = runtime.trackingState === 'error';
+  const faceStatusText =
+    runtime.frame.faceTrackingStatus === 'tracking'
+      ? (language === 'kk' ? 'Бет кадрда' : 'Лицо в кадре')
+      : runtime.frame.faceTrackingStatus === 'searching'
+        ? (language === 'kk' ? 'Бет табылмады' : 'Лицо не найдено')
+        : runtime.frame.faceTrackingStatus === 'unsupported'
+          ? (language === 'kk' ? 'Face API қолдау жоқ' : 'Face API не поддерживается')
+          : runtime.frame.faceTrackingStatus === 'error'
+            ? (language === 'kk' ? 'Бет тексеруі қатемен аяқталды' : 'Ошибка face-detection')
+            : (language === 'kk' ? 'Бет тексеруі күтілуде' : 'Проверяем лицо');
+
+  useEffect(() => () => {
+    stopRuntime();
+  }, [stopRuntime]);
 
   useEffect(() => {
     setTimeLeft(ROUND_SECONDS);
@@ -623,7 +638,7 @@ export default function LabArenaPage() {
             <p className="mt-2 max-w-4xl text-sm leading-7 text-white/80">{copy.subtitle}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="rounded-3xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
               <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-white/70">
                 <Clock3 className="h-3.5 w-3.5" />
@@ -637,6 +652,13 @@ export default function LabArenaPage() {
                 {language === 'kk' ? 'Ұпай' : 'Очки'}
               </div>
               <div className="mt-3 text-3xl font-black">{score}</div>
+            </div>
+            <div className="rounded-3xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
+              <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-white/70">
+                <Sparkles className="h-3.5 w-3.5" />
+                {language === 'kk' ? 'Бет' : 'Лицо'}
+              </div>
+              <div className="mt-3 text-sm font-bold leading-6 text-white">{faceStatusText}</div>
             </div>
           </div>
         </section>

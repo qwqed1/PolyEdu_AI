@@ -9,11 +9,12 @@ function cloneObjects(objects) {
 }
 
 function pointInsideObject(cursor, object) {
+  const padding = 0.03;
   return (
-    cursor.x >= object.position.x &&
-    cursor.x <= object.position.x + object.size.w &&
-    cursor.y >= object.position.y &&
-    cursor.y <= object.position.y + object.size.h
+    cursor.x >= object.position.x - padding &&
+    cursor.x <= object.position.x + object.size.w + padding &&
+    cursor.y >= object.position.y - padding &&
+    cursor.y <= object.position.y + object.size.h + padding
   );
 }
 

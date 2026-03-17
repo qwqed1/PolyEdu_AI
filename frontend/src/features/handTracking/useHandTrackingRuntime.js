@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { HAND_TRACKING_EMIT_INTERVAL_MS, HAND_TRACKING_LOST_HAND_MS } from './handTrackingConfig';
+import {
+  HAND_TRACKING_EMIT_INTERVAL_MS,
+  HAND_TRACKING_FACE_CHECK_INTERVAL_MS,
+  HAND_TRACKING_LOST_HAND_MS,
+} from './handTrackingConfig';
 import {
   closeHandLandmarker,
   createHandLandmarker,
@@ -13,6 +17,8 @@ function buildInitialFrame() {
   return {
     hands: [],
     trackingStatus: 'idle',
+    faces: 0,
+    faceTrackingStatus: 'idle',
     fps: 0,
     timestamp: 0,
   };
@@ -27,6 +33,13 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
   const lastEmitRef = useRef(0);
   const lastFrameTimestampRef = useRef(0);
   const lastSeenAtRef = useRef({});
+  const faceDetectorRef = useRef(undefined);
+  const faceCheckInFlightRef = useRef(false);
+  const lastFaceCheckRef = useRef(0);
+  const faceSnapshotRef = useRef({
+    faces: 0,
+    faceTrackingStatus: 'idle',
+  });
   const {
     cameraState,
     cameraErrorKey,
@@ -49,9 +62,42 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
   const stop = useCallback(() => {
     stopLoop();
     stopCamera();
+    previousHandsRef.current = {};
+    lastSeenAtRef.current = {};
+    lastEmitRef.current = 0;
+    lastFrameTimestampRef.current = 0;
+    lastFaceCheckRef.current = 0;
+    faceCheckInFlightRef.current = false;
+    faceSnapshotRef.current = {
+      faces: 0,
+      faceTrackingStatus: 'idle',
+    };
     setFrame(buildInitialFrame());
     setErrorKey('');
   }, [stopCamera, stopLoop]);
+
+  const ensureFaceDetector = useCallback(() => {
+    if (faceDetectorRef.current !== undefined) {
+      return faceDetectorRef.current;
+    }
+
+    if (typeof window === 'undefined' || !('FaceDetector' in window)) {
+      faceDetectorRef.current = null;
+      return faceDetectorRef.current;
+    }
+
+    try {
+      faceDetectorRef.current = new window.FaceDetector({
+        fastMode: true,
+        maxDetectedFaces: 1,
+      });
+    } catch (error) {
+      console.warn('Face detector is unavailable in this browser', error);
+      faceDetectorRef.current = null;
+    }
+
+    return faceDetectorRef.current;
+  }, []);
 
   const ensureLandmarker = useCallback(async () => {
     if (landmarkerRef.current) {
@@ -99,6 +145,41 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
       const videoElement = videoRef.current;
       syncOverlaySize();
 
+      const faceDetector = ensureFaceDetector();
+      if (
+        faceDetector &&
+        videoElement &&
+        videoElement.readyState >= 2 &&
+        !faceCheckInFlightRef.current &&
+        now - lastFaceCheckRef.current >= HAND_TRACKING_FACE_CHECK_INTERVAL_MS
+      ) {
+        faceCheckInFlightRef.current = true;
+        lastFaceCheckRef.current = now;
+
+        faceDetector.detect(videoElement)
+          .then((faces) => {
+            faceSnapshotRef.current = {
+              faces: faces.length,
+              faceTrackingStatus: faces.length ? 'tracking' : 'searching',
+            };
+          })
+          .catch((error) => {
+            console.warn('Face detection failed', error);
+            faceSnapshotRef.current = {
+              faces: 0,
+              faceTrackingStatus: 'error',
+            };
+          })
+          .finally(() => {
+            faceCheckInFlightRef.current = false;
+          });
+      } else if (!faceDetector) {
+        faceSnapshotRef.current = {
+          faces: 0,
+          faceTrackingStatus: 'unsupported',
+        };
+      }
+
       const result = detectHandsForVideo(landmarkerRef.current, videoElement, now);
       const normalized = normalizeHandTrackingResult(result, previousHandsRef.current);
       const trackedIds = new Set(normalized.hands.map((hand) => hand.id));
@@ -129,6 +210,8 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
         setFrame({
           hands: normalized.hands,
           trackingStatus: normalized.hands.length ? 'tracking' : 'searching',
+          faces: faceSnapshotRef.current.faces,
+          faceTrackingStatus: faceSnapshotRef.current.faceTrackingStatus,
           fps,
           timestamp: now,
         });
@@ -141,19 +224,21 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
     };
 
     animationFrameRef.current = requestAnimationFrame(tick);
-  }, [syncOverlaySize]);
+  }, [ensureFaceDetector, syncOverlaySize]);
 
   const restart = useCallback(async () => {
-    stopLoop();
-    stopCamera();
-    setErrorKey('');
-    setFrame(buildInitialFrame());
+    stop();
 
     const camera = await requestCamera();
     if (!camera.ok) {
       setErrorKey(camera.errorKey);
       return false;
     }
+
+    faceSnapshotRef.current = {
+      faces: 0,
+      faceTrackingStatus: ensureFaceDetector() ? 'searching' : 'unsupported',
+    };
 
     const modelReady = await ensureLandmarker();
     if (!modelReady) {
@@ -162,7 +247,7 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
 
     startLoop();
     return true;
-  }, [ensureLandmarker, requestCamera, startLoop, stopCamera, stopLoop]);
+  }, [ensureFaceDetector, ensureLandmarker, requestCamera, startLoop, stop]);
 
   useEffect(() => {
     if (!autoStart) {
@@ -175,12 +260,12 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
 
     return () => {
       window.clearTimeout(startId);
-      stopLoop();
-      stopCamera();
+      stop();
       closeHandLandmarker(landmarkerRef.current);
       landmarkerRef.current = null;
+      faceDetectorRef.current = undefined;
     };
-  }, [autoStart, restart, stopCamera, stopLoop]);
+  }, [autoStart, restart, stop]);
 
   const trackingState = useMemo(() => {
     if (errorKey || cameraErrorKey || modelState === 'error') {

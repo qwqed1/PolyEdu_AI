@@ -1,5 +1,37 @@
 import { useCallback, useEffect, useState } from 'react';
 
+function waitForVideoReady(videoElement) {
+  if (!videoElement) {
+    return Promise.reject(new Error('Video element is unavailable'));
+  }
+
+  if (videoElement.readyState >= 2) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve, reject) => {
+    const handleLoaded = () => {
+      cleanup();
+      resolve();
+    };
+
+    const handleError = () => {
+      cleanup();
+      reject(new Error('Video metadata failed to load'));
+    };
+
+    const cleanup = () => {
+      videoElement.removeEventListener('loadeddata', handleLoaded);
+      videoElement.removeEventListener('loadedmetadata', handleLoaded);
+      videoElement.removeEventListener('error', handleError);
+    };
+
+    videoElement.addEventListener('loadeddata', handleLoaded, { once: true });
+    videoElement.addEventListener('loadedmetadata', handleLoaded, { once: true });
+    videoElement.addEventListener('error', handleError, { once: true });
+  });
+}
+
 export function useHandTrackingCamera(videoRef) {
   const [cameraState, setCameraState] = useState('idle');
   const [cameraErrorKey, setCameraErrorKey] = useState('');
@@ -47,7 +79,11 @@ export function useHandTrackingCamera(videoRef) {
         throw new Error('Video element is unavailable');
       }
 
+      videoElement.autoplay = true;
+      videoElement.muted = true;
+      videoElement.playsInline = true;
       videoElement.srcObject = stream;
+      await waitForVideoReady(videoElement);
       await videoElement.play();
       setCameraState('ready');
       return { ok: true, errorKey: '' };
