@@ -625,7 +625,10 @@ export default function LabArenaPage() {
             playsInline
             className="h-full w-full scale-x-[-1] object-cover"
           />
-          <canvas ref={runtime.overlayRef} className="absolute inset-0 h-full w-full" />
+          <canvas
+            ref={runtime.overlayRef}
+            className="absolute inset-0 h-full w-full scale-x-[-1] object-cover"
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-2 border-t border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/70">

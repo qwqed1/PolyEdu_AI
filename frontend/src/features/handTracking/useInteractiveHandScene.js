@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const DRAG_SMOOTHING_ALPHA = 0.42;
+const GRAB_RELEASE_GRACE_MS = 180;
 
 function cloneObjects(objects) {
   return objects.map((object) => ({
@@ -95,10 +96,11 @@ export function useInteractiveHandScene({ scene, hands }) {
       let nextObjects = previousObjects;
       const activeHands = new Map(hands.map((hand) => [hand.id, hand]));
       const nextGrabs = { ...grabsRef.current };
+      const now = performance.now();
 
       Object.entries(grabsRef.current).forEach(([handId, grabState]) => {
         const hand = activeHands.get(handId);
-        if (!hand || hand.pinchState !== 'pinching') {
+        if (!hand) {
           if (!didChange) {
             nextObjects = previousObjects.map((object) => ({ ...object, position: { ...object.position } }));
             didChange = true;
@@ -114,7 +116,41 @@ export function useInteractiveHandScene({ scene, hands }) {
           }
 
           delete nextGrabs[handId];
+          return;
         }
+
+        if (hand.pinchState === 'pinching') {
+          nextGrabs[handId] = {
+            ...grabState,
+            lastPinchingAt: now,
+          };
+          return;
+        }
+
+        const lastPinchingAt = grabState.lastPinchingAt || 0;
+        if (now - lastPinchingAt <= GRAB_RELEASE_GRACE_MS) {
+          nextGrabs[handId] = {
+            ...grabState,
+            releaseCandidateAt: grabState.releaseCandidateAt || now,
+          };
+          return;
+        }
+
+        if (!didChange) {
+          nextObjects = previousObjects.map((object) => ({ ...object, position: { ...object.position } }));
+          didChange = true;
+        }
+
+        const objectIndex = nextObjects.findIndex((object) => object.id === grabState.objectId);
+        if (objectIndex >= 0) {
+          nextObjects[objectIndex] = resolveSnap(
+            nextObjects[objectIndex],
+            nextObjects,
+            scene.snapZones,
+          );
+        }
+
+        delete nextGrabs[handId];
       });
 
       hands.forEach((hand) => {
@@ -162,6 +198,8 @@ export function useInteractiveHandScene({ scene, hands }) {
             x: hand.cursor.x - candidate.position.x,
             y: hand.cursor.y - candidate.position.y,
           },
+          lastPinchingAt: now,
+          releaseCandidateAt: 0,
         };
       });
 

@@ -25,6 +25,25 @@ function lerp(start, end, alpha) {
   return start + (end - start) * alpha;
 }
 
+function midpoint(a, b) {
+  if (!a && !b) {
+    return { x: 0.5, y: 0.5 };
+  }
+
+  if (!a) {
+    return b;
+  }
+
+  if (!b) {
+    return a;
+  }
+
+  return {
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+  };
+}
+
 function smoothPoint(previousPoint, nextPoint) {
   if (!previousPoint) {
     return nextPoint;
@@ -113,19 +132,24 @@ function normalizeLandmarkerHand(result, index, previousHand) {
 
   const handednessMeta = result.handednesses?.[index]?.[0];
   const nextLandmarks = smoothLandmarks(previousHand?.landmarks, landmarks);
-  const cursor = clampNormalizedPoint(
-    smoothPoint(previousHand?.cursor, nextLandmarks[8] || nextLandmarks[12] || nextLandmarks[0]),
-  );
   const pinchRatio =
     distance(nextLandmarks[4], nextLandmarks[8]) /
     Math.max(distance(nextLandmarks[0], nextLandmarks[9]), 0.0001);
   const pinchState = getPinchState(previousHand?.pinchState === 'pinching', pinchRatio);
+  const hoverPoint = nextLandmarks[8] || nextLandmarks[12] || nextLandmarks[0];
+  const pinchPoint = midpoint(nextLandmarks[4], nextLandmarks[8]);
+  const targetCursor = pinchState === 'pinching' ? pinchPoint : hoverPoint;
+  const cursor = clampNormalizedPoint(
+    smoothPoint(previousHand?.cursor, targetCursor),
+  );
 
   return {
     fallbackId: getFallbackHandId(result, index),
     handedness: handednessMeta?.categoryName || `Hand ${index + 1}`,
     confidence: handednessMeta?.score || 0,
     cursor,
+    hoverPoint,
+    pinchPoint,
     pinchRatio,
     pinchState,
     landmarks: nextLandmarks,
