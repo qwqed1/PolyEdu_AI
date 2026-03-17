@@ -185,7 +185,9 @@ function HandGhostLayer({ hands }) {
     <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full pointer-events-none">
       {hands.map((hand, index) => (
         <g key={hand.id}>
-          {HandLandmarker.HAND_CONNECTIONS.map(([start, end]) => {
+          {HandLandmarker.HAND_CONNECTIONS.map((connection, connectionIndex) => {
+            const start = connection.start;
+            const end = connection.end;
             const startPoint = hand.landmarks[start];
             const endPoint = hand.landmarks[end];
             if (!startPoint || !endPoint) {
@@ -194,7 +196,7 @@ function HandGhostLayer({ hands }) {
 
             return (
               <line
-                key={`${hand.id}-${start}-${end}`}
+                key={`${hand.id}-${connectionIndex}-${start}-${end}`}
                 x1={startPoint.x * 100}
                 y1={startPoint.y * 100}
                 x2={endPoint.x * 100}
