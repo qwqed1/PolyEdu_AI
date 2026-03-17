@@ -46,6 +46,11 @@ const TOOL_LABELS = {
 };
 
 const LAST_SUBJECT_KEY = 'lab:last-subject';
+const ARENA_TOOLS = new Set(['hand_molecule', 'hand_circuit', 'air_board']);
+
+function isArenaTool(toolKey) {
+  return ARENA_TOOLS.has(toolKey);
+}
 
 function getStoredTool(subjectKey, fallbackTool) {
   return localStorage.getItem(`lab:selected-tool:${subjectKey}`) || fallbackTool;
@@ -73,9 +78,14 @@ export default function LabPage() {
     }
 
     localStorage.setItem(LAST_SUBJECT_KEY, currentSubject.key);
-    const fallbackTool = currentSubject.enabledTools[0];
+    const fallbackTool =
+      currentSubject.enabledTools.find((tool) => !isArenaTool(tool)) ||
+      currentSubject.enabledTools[0];
     const storedTool = getStoredTool(currentSubject.key, fallbackTool);
-    const nextTool = currentSubject.enabledTools.includes(storedTool) ? storedTool : fallbackTool;
+    const isStoredAllowed =
+      currentSubject.enabledTools.includes(storedTool) &&
+      (!isArenaTool(storedTool) || currentSubject.enabledTools.length === 1);
+    const nextTool = isStoredAllowed ? storedTool : fallbackTool;
     const timerId = window.setTimeout(() => {
       setSelectedTool(nextTool);
     }, 0);
@@ -84,7 +94,11 @@ export default function LabPage() {
   }, [currentSubject.key, currentSubject.enabledTools, navigate, subjectKey]);
 
   useEffect(() => {
-    if (currentSubject && selectedTool) {
+    if (
+      currentSubject &&
+      selectedTool &&
+      (!isArenaTool(selectedTool) || currentSubject.enabledTools.length === 1)
+    ) {
       setStoredTool(currentSubject.key, selectedTool);
     }
   }, [currentSubject, selectedTool]);

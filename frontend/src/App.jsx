@@ -31,6 +31,7 @@ import StudentReflectionsPage from './pages/dashboard/StudentReflectionsPage';
 import TeacherLobbyPage from './pages/dashboard/TeacherLobbyPage';
 const LabPage = lazy(() => import('./pages/dashboard/LabPage'));
 const BrainBreakPage = lazy(() => import('./pages/dashboard/BrainBreakPage'));
+const LabArenaPage = lazy(() => import('./pages/dashboard/LabArenaPage'));
 
 function RoleDashboardPage() {
   const { user } = useAuth();
@@ -82,6 +83,14 @@ function App() {
               element={
                 <PrivateRoute roles={['teacher']}>
                   <BrainBreakPage />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/lab-arena/:mode"
+              element={
+                <PrivateRoute roles={['teacher']}>
+                  <LabArenaPage />
                 </PrivateRoute>
               }
             />

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { Excalidraw } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
 import 'mathlive';
@@ -6,7 +7,6 @@ import { AlertCircle, FunctionSquare, PenTool, Sigma } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getLocalizedText } from '../../data/labCatalog';
 import { loadExternalScript } from '../../utils/loadExternalScript';
-import AirBoardPanel from './hand/AirBoardPanel';
 
 const EXCALIDRAW_STORAGE_KEY = 'lab:math:board';
 const FORMULA_STORAGE_KEY = 'lab:math:formula';
@@ -21,7 +21,7 @@ function loadStoredBoard() {
   }
 }
 
-export default function MathLab({ language, selectedTool }) {
+export default function MathLab({ subject, language, selectedTool }) {
   const { theme } = useTheme();
   const mathFieldRef = useRef(null);
   const ggbContainerRef = useRef(null);
@@ -93,13 +93,7 @@ export default function MathLab({ language, selectedTool }) {
   const formulaExamples = ['y=x^2-4x+3', 'y=2x+5', 'y=sin(x)'];
 
   if (selectedTool === 'air_board') {
-    return (
-      <AirBoardPanel
-        formulaValue={formulaValue}
-        setFormulaValue={setFormulaValue}
-        language={language}
-      />
-    );
+    return <Navigate to={`/lab-arena/math?subject=${subject?.key || 'mathematics'}`} replace />;
   }
 
   return (

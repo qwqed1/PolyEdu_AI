@@ -1,6 +1,6 @@
 import { BatteryCharging, Sparkles, Zap } from 'lucide-react';
+import { Navigate } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
-import PhysicsHandScene from './hand/PhysicsHandScene';
 
 function PhysicsInfoCard({ title, body }) {
   return (
@@ -15,11 +15,11 @@ function PhysicsInfoCard({ title, body }) {
   );
 }
 
-export default function PhysicsLab({ selectedTool }) {
+export default function PhysicsLab({ subject, selectedTool }) {
   const { language } = useLanguage();
 
   if (selectedTool === 'hand_circuit') {
-    return <PhysicsHandScene />;
+    return <Navigate to={`/lab-arena/physics?subject=${subject?.key || 'physics'}`} replace />;
   }
 
   return (

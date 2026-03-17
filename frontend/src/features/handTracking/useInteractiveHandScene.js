@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 function cloneObjects(objects) {
   return objects.map((object) => ({
@@ -167,10 +167,10 @@ export function useInteractiveHandScene({ scene, hands }) {
     return scene.snapZones.every((zone) => objects.some((object) => object.snappedZoneId === zone.id));
   }, [objects, scene]);
 
-  const resetScene = () => {
+  const resetScene = useCallback(() => {
     grabsRef.current = {};
     setObjects(cloneObjects(scene.objects));
-  };
+  }, [scene]);
 
   return {
     objects,

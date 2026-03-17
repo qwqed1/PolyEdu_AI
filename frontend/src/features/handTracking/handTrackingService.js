@@ -2,6 +2,10 @@ import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import {
   HAND_TRACKING_CLOSE_PINCH_RATIO,
   HAND_TRACKING_MAX_HANDS,
+  HAND_TRACKING_MIN_DETECTION_CONFIDENCE,
+  HAND_TRACKING_MIN_PRESENCE_CONFIDENCE,
+  HAND_TRACKING_MIN_TRACKING_CONFIDENCE,
+  HAND_TRACKING_MIRROR_X,
   HAND_TRACKING_MODEL_ASSET_PATH,
   HAND_TRACKING_OPEN_PINCH_RATIO,
   HAND_TRACKING_SMOOTHING_ALPHA,
@@ -38,12 +42,28 @@ function clampNormalizedPoint(point) {
   };
 }
 
-function getHandId(result, index) {
+function normalizePoint(point) {
+  if (!point) {
+    return { x: 0.5, y: 0.5 };
+  }
+
+  return clampNormalizedPoint({
+    x: HAND_TRACKING_MIRROR_X ? 1 - point.x : point.x,
+    y: point.y,
+  });
+}
+
+function smoothLandmarks(previousLandmarks, landmarks) {
+  return landmarks.map((landmark, landmarkIndex) =>
+    normalizePoint(smoothPoint(previousLandmarks?.[landmarkIndex], landmark)),
+  );
+}
+
+function getFallbackHandId(result, index) {
   const handedness = result.handednesses?.[index]?.[0]?.categoryName?.toLowerCase();
   if (handedness === 'left' || handedness === 'right') {
     return handedness;
   }
-
   return `hand-${index + 1}`;
 }
 
@@ -55,32 +75,117 @@ function getPinchState(pinchingPreviously, pinchRatio) {
   return pinchRatio < HAND_TRACKING_CLOSE_PINCH_RATIO ? 'pinching' : 'open';
 }
 
-function normalizeLandmarkerHand(result, index, previousHands) {
+function findClosestPreviousHand(previousHands, cursor) {
+  const entries = Object.values(previousHands || {});
+  if (!entries.length) {
+    return null;
+  }
+
+  let closest = null;
+  let minDistance = Number.POSITIVE_INFINITY;
+
+  entries.forEach((entry) => {
+    const nextDistance = distance(entry.cursor, cursor);
+    if (nextDistance < minDistance) {
+      minDistance = nextDistance;
+      closest = entry;
+    }
+  });
+
+  return minDistance <= 0.24 ? closest : null;
+}
+
+function normalizeLandmarkerHand(result, index, previousHand) {
   const landmarks = result.landmarks?.[index];
   if (!landmarks?.length) {
     return null;
   }
 
-  const id = getHandId(result, index);
   const handednessMeta = result.handednesses?.[index]?.[0];
-  const previous = previousHands[id];
-  const cursor = clampNormalizedPoint(
-    smoothPoint(previous?.cursor, landmarks[8] || landmarks[12] || landmarks[0]),
+  const nextLandmarks = smoothLandmarks(previousHand?.landmarks, landmarks);
+  const cursor = normalizePoint(
+    smoothPoint(previousHand?.cursor, nextLandmarks[8] || nextLandmarks[12] || nextLandmarks[0]),
   );
   const pinchRatio =
-    distance(landmarks[4], landmarks[8]) /
-    Math.max(distance(landmarks[0], landmarks[9]), 0.0001);
-  const pinchState = getPinchState(previous?.pinchState === 'pinching', pinchRatio);
+    distance(nextLandmarks[4], nextLandmarks[8]) /
+    Math.max(distance(nextLandmarks[0], nextLandmarks[9]), 0.0001);
+  const pinchState = getPinchState(previousHand?.pinchState === 'pinching', pinchRatio);
 
   return {
-    id,
+    fallbackId: getFallbackHandId(result, index),
     handedness: handednessMeta?.categoryName || `Hand ${index + 1}`,
     confidence: handednessMeta?.score || 0,
     cursor,
     pinchRatio,
     pinchState,
-    landmarks,
+    landmarks: nextLandmarks,
   };
+}
+
+function resolveStableHandIds(nextHands, previousHands) {
+  const previousIds = Object.keys(previousHands || {});
+  if (!nextHands.length) {
+    return [];
+  }
+
+  const matches = [];
+  nextHands.forEach((hand, handIndex) => {
+    previousIds.forEach((previousId) => {
+      const previousHand = previousHands[previousId];
+      matches.push({
+        handIndex,
+        previousId,
+        distance: distance(hand.cursor, previousHand?.cursor),
+      });
+    });
+  });
+
+  matches.sort((left, right) => left.distance - right.distance);
+
+  const assignments = {};
+  const usedHandIndexes = new Set();
+  const usedPreviousIds = new Set();
+
+  matches.forEach((match) => {
+    if (match.distance > 0.24) {
+      return;
+    }
+
+    if (usedHandIndexes.has(match.handIndex) || usedPreviousIds.has(match.previousId)) {
+      return;
+    }
+
+    assignments[match.handIndex] = match.previousId;
+    usedHandIndexes.add(match.handIndex);
+    usedPreviousIds.add(match.previousId);
+  });
+
+  const usedIds = new Set(Object.values(assignments));
+  nextHands.forEach((hand, handIndex) => {
+    if (assignments[handIndex]) {
+      return;
+    }
+
+    if (hand.fallbackId && !usedIds.has(hand.fallbackId)) {
+      assignments[handIndex] = hand.fallbackId;
+      usedIds.add(hand.fallbackId);
+      return;
+    }
+
+    let index = 1;
+    let id = `hand-${index}`;
+    while (usedIds.has(id)) {
+      index += 1;
+      id = `hand-${index}`;
+    }
+    assignments[handIndex] = id;
+    usedIds.add(id);
+  });
+
+  return nextHands.map((hand, handIndex) => ({
+    ...hand,
+    id: assignments[handIndex],
+  }));
 }
 
 export async function createHandLandmarker() {
@@ -92,9 +197,9 @@ export async function createHandLandmarker() {
     },
     runningMode: 'VIDEO',
     numHands: HAND_TRACKING_MAX_HANDS,
-    minHandDetectionConfidence: 0.55,
-    minHandPresenceConfidence: 0.55,
-    minTrackingConfidence: 0.55,
+    minHandDetectionConfidence: HAND_TRACKING_MIN_DETECTION_CONFIDENCE,
+    minHandPresenceConfidence: HAND_TRACKING_MIN_PRESENCE_CONFIDENCE,
+    minTrackingConfidence: HAND_TRACKING_MIN_TRACKING_CONFIDENCE,
   });
 }
 
@@ -107,19 +212,24 @@ export function detectHandsForVideo(landmarker, video, now) {
 }
 
 export function normalizeHandTrackingResult(result, previousHands = {}) {
-  const hands = (result?.landmarks || [])
-    .map((_, index) => normalizeLandmarkerHand(result, index, previousHands))
-    .filter(Boolean);
+  const hands = (result?.landmarks || []).map((_, index) => {
+    const landmarks = result?.landmarks?.[index];
+    const cursor = normalizePoint(landmarks?.[8] || landmarks?.[12] || landmarks?.[0] || { x: 0.5, y: 0.5 });
+    const closestPrevious = findClosestPreviousHand(previousHands, cursor);
+    return normalizeLandmarkerHand(result, index, closestPrevious);
+  }).filter(Boolean);
 
-  const nextHandMap = hands.reduce((accumulator, hand) => {
+  const stableHands = resolveStableHandIds(hands, previousHands);
+
+  const nextHandMap = stableHands.reduce((accumulator, hand) => {
     accumulator[hand.id] = hand;
     return accumulator;
   }, {});
 
   return {
-    hands,
+    hands: stableHands,
     handsMap: nextHandMap,
-    trackingStatus: hands.length ? 'tracking' : 'searching',
+    trackingStatus: stableHands.length ? 'tracking' : 'searching',
   };
 }
 

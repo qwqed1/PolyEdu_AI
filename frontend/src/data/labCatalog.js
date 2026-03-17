@@ -187,7 +187,7 @@ const chemistrySubject = labCatalog.find((subject) => subject.key === 'chemistry
 
 if (chemistrySubject) {
   Object.assign(chemistrySubject, {
-    enabledTools: ['hand_molecule', 'periodic', 'molecule', 'reactions'],
+    enabledTools: ['periodic', 'molecule', 'reactions', 'hand_molecule'],
     promptPresets: [
       chemistryPreset('chemistry-core', '3D молекулы и реакции', '3D молекулалар мен реакциялар', chemistrySubject.titleRu),
       chemistryPreset('chemistry-lab', 'Учебная химическая лаборатория', 'Оқу химиялық зертхана', chemistrySubject.titleRu),

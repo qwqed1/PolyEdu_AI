@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import OCL from 'openchemlib';
 import {
   Atom,
@@ -16,7 +16,6 @@ import { chemistryMoleculeExamples, chemistryReactionOptions } from '../../data/
 import chemistryService from '../../services/chemistryService';
 import { getLocalizedText } from '../../data/labCatalog';
 import { loadExternalScript } from '../../utils/loadExternalScript';
-import ChemistryHandScene from './hand/ChemistryHandScene';
 
 let viewerLibraryPromise;
 
@@ -1013,9 +1012,9 @@ function ReactionsPanel({ language }) {
   );
 }
 
-export default function ChemistryLab({ language, selectedTool }) {
+export default function ChemistryLab({ subject, language, selectedTool }) {
   if (selectedTool === 'hand_molecule') {
-    return <ChemistryHandScene />;
+    return <Navigate to={`/lab-arena/chemistry?subject=${subject?.key || 'chemistry'}`} replace />;
   }
 
   if (selectedTool === 'periodic') {
