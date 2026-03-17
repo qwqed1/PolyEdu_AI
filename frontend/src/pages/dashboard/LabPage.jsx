@@ -43,6 +43,7 @@ const TOOL_LABELS = {
   reactions: { ru: 'Реакции', kk: 'Реакциялар' },
   hand_molecule: { ru: 'Hand molecule', kk: 'Hand molecule' },
   hand_circuit: { ru: 'Hand circuit', kk: 'Hand circuit' },
+  current_flow: { ru: 'Путь тока', kk: 'Ток жолы' },
 };
 
 const LAST_SUBJECT_KEY = 'lab:last-subject';
