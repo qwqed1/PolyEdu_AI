@@ -83,9 +83,10 @@ function normalizePoint(point) {
 }
 
 function smoothLandmarks(previousLandmarks, landmarks) {
-  return landmarks.map((landmark, landmarkIndex) =>
-    normalizePoint(smoothPoint(previousLandmarks?.[landmarkIndex], landmark)),
-  );
+  return landmarks.map((landmark, landmarkIndex) => {
+    const normalizedLandmark = normalizePoint(landmark);
+    return smoothPoint(previousLandmarks?.[landmarkIndex], normalizedLandmark);
+  });
 }
 
 function getFallbackHandId(result, index) {
