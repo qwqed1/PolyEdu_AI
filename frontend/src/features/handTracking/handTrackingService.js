@@ -113,7 +113,7 @@ function normalizeLandmarkerHand(result, index, previousHand) {
 
   const handednessMeta = result.handednesses?.[index]?.[0];
   const nextLandmarks = smoothLandmarks(previousHand?.landmarks, landmarks);
-  const cursor = normalizePoint(
+  const cursor = clampNormalizedPoint(
     smoothPoint(previousHand?.cursor, nextLandmarks[8] || nextLandmarks[12] || nextLandmarks[0]),
   );
   const pinchRatio =

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+const DRAG_SMOOTHING_ALPHA = 0.42;
+
 function cloneObjects(objects) {
   return objects.map((object) => ({
     ...object,
@@ -22,6 +24,13 @@ function clampPosition(object, nextPosition) {
   return {
     x: Math.min(Math.max(nextPosition.x, 0), 1 - object.size.w),
     y: Math.min(Math.max(nextPosition.y, 0), 1 - object.size.h),
+  };
+}
+
+function smoothDragPosition(currentPosition, targetPosition) {
+  return {
+    x: currentPosition.x + (targetPosition.x - currentPosition.x) * DRAG_SMOOTHING_ALPHA,
+    y: currentPosition.y + (targetPosition.y - currentPosition.y) * DRAG_SMOOTHING_ALPHA,
   };
 }
 
@@ -120,13 +129,14 @@ export function useInteractiveHandScene({ scene, hands }) {
           const objectIndex = nextObjects.findIndex((object) => object.id === activeGrab.objectId);
           if (objectIndex >= 0) {
             const object = nextObjects[objectIndex];
+            const targetPosition = clampPosition(object, {
+              x: hand.cursor.x - activeGrab.offset.x,
+              y: hand.cursor.y - activeGrab.offset.y,
+            });
             nextObjects[objectIndex] = {
               ...object,
               snappedZoneId: '',
-              position: clampPosition(object, {
-                x: hand.cursor.x - activeGrab.offset.x,
-                y: hand.cursor.y - activeGrab.offset.y,
-              }),
+              position: smoothDragPosition(object.position, targetPosition),
             };
           }
 
