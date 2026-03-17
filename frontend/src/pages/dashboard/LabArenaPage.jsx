@@ -1,4 +1,3 @@
-import { HandLandmarker } from '@mediapipe/tasks-vision';
 import {
   ArrowLeft,
   Atom,
@@ -16,6 +15,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { HAND_CONNECTIONS } from '../../features/handTracking/handLandmarkConstants';
 import { useInteractiveHandScene } from '../../features/handTracking/useInteractiveHandScene';
 import { useHandTrackingRuntime } from '../../features/handTracking/useHandTrackingRuntime';
 import mathHandwritingService from '../../services/mathHandwritingService';
@@ -185,7 +185,7 @@ function HandGhostLayer({ hands }) {
     <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full pointer-events-none">
       {hands.map((hand, index) => (
         <g key={hand.id}>
-          {HandLandmarker.HAND_CONNECTIONS.map((connection, connectionIndex) => {
+          {HAND_CONNECTIONS.map((connection, connectionIndex) => {
             const start = connection.start;
             const end = connection.end;
             const startPoint = hand.landmarks[start];
@@ -274,6 +274,12 @@ function getTrackingErrorText(language, errorKey) {
     modelUnavailable: isKk
       ? 'Hand-tracking моделі жүктелмеді. Интернетті тексеріп, қайта іске қосыңыз.'
       : 'Не удалось загрузить модель hand-tracking. Проверьте интернет и нажмите повтор.',
+    pythonUnavailable: isKk
+      ? 'Python vision service is unavailable. Start the vision-service and retry.'
+      : 'Python vision service is unavailable. Start the vision-service and retry.',
+    wsDisconnected: isKk
+      ? 'The WebSocket connection to the Python vision service was lost. Restart the arena.'
+      : 'The WebSocket connection to the Python vision service was lost. Restart the arena.',
   };
 
   return (
@@ -400,16 +406,15 @@ export default function LabArenaPage() {
   } = physicsState;
   const isInitializing = runtime.state === 'initializing';
   const isTrackingError = runtime.state === 'error';
-  const faceStatusText =
-    runtime.frame.faceTrackingStatus === 'tracking'
-      ? (language === 'kk' ? 'Бет кадрда' : 'Лицо в кадре')
-      : runtime.frame.faceTrackingStatus === 'searching'
-        ? (language === 'kk' ? 'Бет табылмады' : 'Лицо не найдено')
-        : runtime.frame.faceTrackingStatus === 'unsupported'
-          ? (language === 'kk' ? 'Face API қолдау жоқ' : 'Face API не поддерживается')
-          : runtime.frame.faceTrackingStatus === 'error'
-            ? (language === 'kk' ? 'Бет тексеруі қатемен аяқталды' : 'Ошибка face-detection')
-            : (language === 'kk' ? 'Бет тексеруі күтілуде' : 'Проверяем лицо');
+  const pinchActive = runtime.frame.hands.some((hand) => hand.pinchState === 'pinching');
+  const serviceStatusText =
+    runtime.wsState === 'connected' && runtime.pythonState === 'ready'
+      ? (language === 'kk' ? 'Python vision service ready' : 'Python vision service ready')
+      : runtime.wsState === 'connecting' || runtime.pythonState === 'loading'
+        ? (language === 'kk' ? 'Connecting Python service' : 'Connecting Python service')
+        : runtime.state === 'error'
+          ? (language === 'kk' ? 'Vision service error' : 'Vision service error')
+          : (language === 'kk' ? 'Waiting for vision service' : 'Waiting for vision service');
 
   useEffect(() => () => {
     stopRuntimeRef.current?.();
@@ -622,12 +627,17 @@ export default function LabArenaPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-2 border-t border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/70">
-          <div>{language === 'kk' ? `Қол: ${runtime.frame.hands.length}` : `Руки: ${runtime.frame.hands.length}`}</div>
-          <div>{language === 'kk' ? `Бет: ${runtime.frame.faces}` : `Лица: ${runtime.frame.faces}`}</div>
+          <div>{language === 'kk' ? `Hands: ${runtime.frame.hands.length}` : `Hands: ${runtime.frame.hands.length}`}</div>
+          <div>{language === 'kk' ? `Pinch: ${pinchActive ? 'yes' : 'no'}` : `Pinch: ${pinchActive ? 'yes' : 'no'}`}</div>
         </div>
-        <div className="grid grid-cols-2 gap-2 border-t border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60">
+        <div className="grid grid-cols-3 gap-2 border-t border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60">
           <div>{`Camera: ${runtime.cameraState}`}</div>
-          <div>{`Model: ${runtime.modelState}`}</div>
+          <div>{`WS: ${runtime.wsState}`}</div>
+          <div>{`Python: ${runtime.pythonState}`}</div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 border-t border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">
+          <div>{`Server fps: ${runtime.frame.serverFps || 0}`}</div>
+          <div>{runtime.frame.warnings?.[0] || 'ready'}</div>
         </div>
       </div>
 
@@ -691,9 +701,9 @@ export default function LabArenaPage() {
             <div className="rounded-3xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
               <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-white/70">
                 <Sparkles className="h-3.5 w-3.5" />
-                {language === 'kk' ? 'Бет' : 'Лицо'}
+                {language === 'kk' ? 'Service' : 'Service'}
               </div>
-              <div className="mt-3 text-sm font-bold leading-6 text-white">{faceStatusText}</div>
+              <div className="mt-3 text-sm font-bold leading-6 text-white">{serviceStatusText}</div>
             </div>
           </div>
         </section>

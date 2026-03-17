@@ -14,3 +14,29 @@ export const HAND_TRACKING_MIN_DETECTION_CONFIDENCE = 0.3;
 export const HAND_TRACKING_MIN_PRESENCE_CONFIDENCE = 0.3;
 export const HAND_TRACKING_MIN_TRACKING_CONFIDENCE = 0.3;
 export const HAND_TRACKING_FACE_CHECK_INTERVAL_MS = 220;
+
+export const HAND_TRACKING_CAPTURE_WIDTH = 640;
+export const HAND_TRACKING_CAPTURE_HEIGHT = 360;
+export const HAND_TRACKING_CAPTURE_QUALITY = 0.62;
+export const HAND_TRACKING_TARGET_FPS = 12;
+export const HAND_TRACKING_MAX_BUFFERED_BYTES = 900000;
+export const HAND_TRACKING_WS_READY_TIMEOUT_MS = 8000;
+
+export function getVisionWsUrl() {
+  const configuredUrl = String(import.meta.env.VITE_VISION_WS_URL || '').trim();
+  if (configuredUrl) {
+    return configuredUrl;
+  }
+
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  const { hostname, protocol } = window.location;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${wsProtocol}//localhost:8001/ws/hand-tracking`;
+  }
+
+  return '';
+}

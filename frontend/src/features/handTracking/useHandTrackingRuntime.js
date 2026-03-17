@@ -1,214 +1,459 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  HAND_TRACKING_FACE_CHECK_INTERVAL_MS,
-  HAND_TRACKING_EMIT_INTERVAL_MS,
-  HAND_TRACKING_LOST_HAND_MS,
+  HAND_TRACKING_CAPTURE_HEIGHT,
+  HAND_TRACKING_CAPTURE_QUALITY,
+  HAND_TRACKING_CAPTURE_WIDTH,
+  HAND_TRACKING_MAX_BUFFERED_BYTES,
+  HAND_TRACKING_TARGET_FPS,
+  HAND_TRACKING_WS_READY_TIMEOUT_MS,
+  getVisionWsUrl,
 } from './handTrackingConfig';
-import {
-  detectHandsForVideo,
-  drawHandTrackingOverlay,
-  normalizeFaceBoxes,
-  normalizeHandTrackingResult,
-  createHandLandmarker,
-  closeHandLandmarker,
-} from './handTrackingService';
+import { drawVisionOverlay } from './handLandmarkConstants';
 import { useHandTrackingCamera } from './useHandTrackingCamera';
-import { useVisionRealtimeLoop } from './useVisionRealtimeLoop';
 
-function buildInitialFrame() {
+function createInitialFrame() {
   return {
     hands: [],
-    faceBoxes: [],
+    primaryCursor: null,
+    secondaryCursor: null,
     trackingStatus: 'idle',
     faces: 0,
     faceTrackingStatus: 'idle',
-    fps: 0,
+    warnings: [],
+    serverFps: 0,
     timestamp: 0,
-    debug: {
-      faces: 0,
-      cameraState: 'idle',
-      modelState: 'idle',
-    },
+    fps: 0,
   };
+}
+
+function toFrameWithFps(frame, now, previousTimestamp) {
+  const fps = previousTimestamp ? Math.round(1000 / Math.max(now - previousTimestamp, 1)) : 0;
+  return {
+    ...frame,
+    fps,
+    timestamp: frame.timestamp || now,
+  };
+}
+
+function createSessionId() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  return `vision-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function blobToArrayBuffer(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Failed to read captured frame'));
+    reader.readAsArrayBuffer(blob);
+  });
+}
+
+function canvasToJpegBuffer(canvas, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        reject(new Error('Failed to encode JPEG frame'));
+        return;
+      }
+
+      try {
+        const buffer = await blobToArrayBuffer(blob);
+        resolve(buffer);
+      } catch (error) {
+        reject(error);
+      }
+    }, 'image/jpeg', quality);
+  });
 }
 
 export function useHandTrackingRuntime({ autoStart = true } = {}) {
   const videoRef = useRef(null);
   const overlayRef = useRef(null);
-  const previousHandsRef = useRef({});
-  const lastSeenAtRef = useRef({});
-  const faceDetectorRef = useRef(undefined);
-  const faceCheckInFlightRef = useRef(false);
-  const lastFaceCheckRef = useRef(0);
-  const faceSnapshotRef = useRef({
-    faces: 0,
-    faceBoxes: [],
-    faceTrackingStatus: 'idle',
-  });
+  const captureCanvasRef = useRef(null);
+  const websocketRef = useRef(null);
+  const animationFrameRef = useRef(null);
+  const readyTimeoutRef = useRef(null);
+  const sendingRef = useRef(false);
+  const runningRef = useRef(false);
+  const pythonReadyRef = useRef(false);
+  const sessionIdRef = useRef(createSessionId());
+  const lastSentAtRef = useRef(0);
+  const lastEmitRef = useRef(0);
+  const lastRenderTimestampRef = useRef(0);
+  const manualStopRef = useRef(false);
   const {
     cameraState,
     cameraErrorKey,
     requestCamera,
     stopCamera,
   } = useHandTrackingCamera(videoRef);
+  const [frame, setFrame] = useState(() => createInitialFrame());
+  const [wsState, setWsState] = useState('idle');
+  const [modelState, setModelState] = useState('idle');
+  const [pythonState, setPythonState] = useState('idle');
+  const [error, setError] = useState('');
 
-  const clearRuntimeRefs = useCallback(() => {
-    previousHandsRef.current = {};
-    lastSeenAtRef.current = {};
-    lastFaceCheckRef.current = 0;
-    faceCheckInFlightRef.current = false;
-    faceSnapshotRef.current = {
-      faces: 0,
-      faceBoxes: [],
-      faceTrackingStatus: 'idle',
-    };
-  }, []);
+  const syncOverlaySize = useCallback(() => {
+    const overlayElement = overlayRef.current;
+    const videoElement = videoRef.current;
 
-  const ensureFaceDetector = useCallback(() => {
-    if (faceDetectorRef.current !== undefined) {
-      return faceDetectorRef.current;
+    if (!overlayElement || !videoElement?.videoWidth || !videoElement?.videoHeight) {
+      return;
     }
 
-    if (typeof window === 'undefined' || !('FaceDetector' in window)) {
-      faceDetectorRef.current = null;
-      return faceDetectorRef.current;
+    if (
+      overlayElement.width !== videoElement.videoWidth ||
+      overlayElement.height !== videoElement.videoHeight
+    ) {
+      overlayElement.width = videoElement.videoWidth;
+      overlayElement.height = videoElement.videoHeight;
+    }
+  }, []);
+
+  const clearOverlay = useCallback(() => {
+    const overlayElement = overlayRef.current;
+    const context = overlayElement?.getContext('2d');
+    if (!overlayElement || !context) {
+      return;
+    }
+
+    context.clearRect(0, 0, overlayElement.width, overlayElement.height);
+  }, []);
+
+  const stopLoop = useCallback(() => {
+    runningRef.current = false;
+    sendingRef.current = false;
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+  }, []);
+
+  const resetState = useCallback(() => {
+    pythonReadyRef.current = false;
+    lastSentAtRef.current = 0;
+    lastEmitRef.current = 0;
+    lastRenderTimestampRef.current = 0;
+    setPythonState('idle');
+    setFrame(createInitialFrame());
+    clearOverlay();
+  }, [clearOverlay]);
+
+  const cleanupSocket = useCallback((options = {}) => {
+    const { suppressCloseError = true } = options;
+    const socket = websocketRef.current;
+    websocketRef.current = null;
+
+    if (readyTimeoutRef.current) {
+      clearTimeout(readyTimeoutRef.current);
+      readyTimeoutRef.current = null;
+    }
+
+    if (socket) {
+      socket.onopen = null;
+      socket.onmessage = null;
+      socket.onerror = null;
+      socket.onclose = null;
+
+      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+        socket.close();
+      }
+    }
+
+    if (!suppressCloseError && !manualStopRef.current && !error) {
+      setError('wsDisconnected');
+    }
+  }, [error]);
+
+  const stop = useCallback(() => {
+    manualStopRef.current = true;
+    stopLoop();
+    cleanupSocket();
+    stopCamera();
+    setWsState('idle');
+    setModelState('idle');
+    setError('');
+    resetState();
+  }, [cleanupSocket, resetState, stopCamera, stopLoop]);
+
+  const handleVisionFrame = useCallback((payload) => {
+    const nextFrame = {
+      hands: payload.hands || [],
+      primaryCursor: payload.primaryCursor || null,
+      secondaryCursor: payload.secondaryCursor || null,
+      trackingStatus: payload.trackingStatus || ((payload.hands || []).length ? 'tracking' : 'searching'),
+      faces: 0,
+      faceTrackingStatus: 'idle',
+      warnings: payload.warnings || [],
+      serverFps: payload.serverFps || 0,
+      timestamp: payload.timestamp || Date.now(),
+    };
+
+    const now = performance.now();
+    setFrame(toFrameWithFps(nextFrame, now, lastRenderTimestampRef.current));
+    lastEmitRef.current = now;
+    lastRenderTimestampRef.current = now;
+    sendingRef.current = false;
+
+    syncOverlaySize();
+    drawVisionOverlay(overlayRef.current, nextFrame.hands);
+  }, [syncOverlaySize]);
+
+  const connectVisionSocket = useCallback(() => new Promise((resolve, reject) => {
+    const wsUrl = getVisionWsUrl();
+    if (!wsUrl) {
+      reject(new Error('Vision WebSocket URL is not configured'));
+      return;
+    }
+
+    setWsState('connecting');
+    setModelState('loading');
+    setPythonState('loading');
+
+    let settled = false;
+    const socket = new WebSocket(wsUrl);
+    socket.binaryType = 'arraybuffer';
+    websocketRef.current = socket;
+
+    const fail = (reason) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      cleanupSocket();
+      reject(reason);
+    };
+
+    readyTimeoutRef.current = setTimeout(() => {
+      fail(new Error('Vision service did not become ready in time'));
+    }, HAND_TRACKING_WS_READY_TIMEOUT_MS);
+
+    socket.onopen = () => {
+      setWsState('connected');
+
+      const videoElement = videoRef.current;
+      socket.send(JSON.stringify({
+        type: 'hello',
+        sessionId: sessionIdRef.current,
+        mode: 'lab-arena',
+        width: videoElement?.videoWidth || HAND_TRACKING_CAPTURE_WIDTH,
+        height: videoElement?.videoHeight || HAND_TRACKING_CAPTURE_HEIGHT,
+        fpsTarget: HAND_TRACKING_TARGET_FPS,
+      }));
+    };
+
+    socket.onmessage = (event) => {
+      if (typeof event.data !== 'string') {
+        return;
+      }
+
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.type === 'ready') {
+          pythonReadyRef.current = true;
+          setModelState('ready');
+          setPythonState('ready');
+          if (readyTimeoutRef.current) {
+            clearTimeout(readyTimeoutRef.current);
+            readyTimeoutRef.current = null;
+          }
+          if (!settled) {
+            settled = true;
+            resolve(socket);
+          }
+          return;
+        }
+
+        if (payload.type === 'vision_frame') {
+          handleVisionFrame(payload);
+        }
+      } catch (parseError) {
+        console.error('Failed to parse vision payload', parseError);
+      }
+    };
+
+    socket.onerror = () => {
+      fail(new Error('Vision service connection failed'));
+    };
+
+    socket.onclose = () => {
+      if (!settled) {
+        fail(new Error('Vision service connection closed before ready'));
+        return;
+      }
+
+      cleanupSocket({ suppressCloseError: false });
+      if (!manualStopRef.current) {
+        setWsState('disconnected');
+        setModelState('error');
+        setPythonState('error');
+        setError('wsDisconnected');
+        stopLoop();
+      }
+    };
+  }), [cleanupSocket, handleVisionFrame, stopLoop]);
+
+  const sendNextFrame = useCallback(async () => {
+    const socket = websocketRef.current;
+    const videoElement = videoRef.current;
+
+    if (
+      !runningRef.current ||
+      !socket ||
+      socket.readyState !== WebSocket.OPEN ||
+      !pythonReadyRef.current ||
+      !videoElement ||
+      videoElement.readyState < 2
+    ) {
+      return;
+    }
+
+    const now = performance.now();
+    const minInterval = 1000 / HAND_TRACKING_TARGET_FPS;
+    if (now - lastSentAtRef.current < minInterval) {
+      return;
+    }
+
+    if (sendingRef.current || socket.bufferedAmount > HAND_TRACKING_MAX_BUFFERED_BYTES) {
+      return;
+    }
+
+    const captureCanvas = captureCanvasRef.current || document.createElement('canvas');
+    captureCanvasRef.current = captureCanvas;
+    captureCanvas.width = HAND_TRACKING_CAPTURE_WIDTH;
+    captureCanvas.height = HAND_TRACKING_CAPTURE_HEIGHT;
+
+    const context = captureCanvas.getContext('2d', { willReadFrequently: false });
+    if (!context) {
+      setError('pythonUnavailable');
+      setModelState('error');
+      stopLoop();
+      return;
+    }
+
+    context.drawImage(videoElement, 0, 0, captureCanvas.width, captureCanvas.height);
+    sendingRef.current = true;
+    lastSentAtRef.current = now;
+
+    try {
+      const frameBuffer = await canvasToJpegBuffer(captureCanvas, HAND_TRACKING_CAPTURE_QUALITY);
+      if (!runningRef.current || socket.readyState !== WebSocket.OPEN) {
+        sendingRef.current = false;
+        return;
+      }
+
+      socket.send(frameBuffer);
+    } catch (frameError) {
+      console.error('Failed to capture vision frame', frameError);
+      sendingRef.current = false;
+      setError('pythonUnavailable');
+      setModelState('error');
+      stopLoop();
+    }
+  }, [stopLoop]);
+
+  const startLoop = useCallback(() => {
+    if (runningRef.current) {
+      return;
+    }
+
+    runningRef.current = true;
+
+    const tick = async () => {
+      if (!runningRef.current) {
+        animationFrameRef.current = null;
+        return;
+      }
+
+      await sendNextFrame();
+      animationFrameRef.current = requestAnimationFrame(tick);
+    };
+
+    animationFrameRef.current = requestAnimationFrame(tick);
+  }, [sendNextFrame]);
+
+  const start = useCallback(async () => {
+    manualStopRef.current = false;
+    setError('');
+    resetState();
+
+    const camera = await requestCamera();
+    if (!camera.ok) {
+      setError(camera.errorKey || 'cameraUnavailable');
+      return false;
     }
 
     try {
-      faceDetectorRef.current = new window.FaceDetector({
-        fastMode: true,
-        maxDetectedFaces: 1,
-      });
-    } catch (error) {
-      console.warn('Face detector is unavailable in this browser', error);
-      faceDetectorRef.current = null;
+      await connectVisionSocket();
+      startLoop();
+      return true;
+    } catch (connectionError) {
+      console.error('Vision runtime failed to start', connectionError);
+      setWsState('error');
+      setModelState('error');
+      setPythonState('error');
+      setError('pythonUnavailable');
+      stopCamera();
+      return false;
     }
-
-    return faceDetectorRef.current;
-  }, []);
-
-  const detectFrame = useCallback(({ processor, videoElement, now }) => {
-    const faceDetector = ensureFaceDetector();
-    if (
-      faceDetector &&
-      !faceCheckInFlightRef.current &&
-      now - lastFaceCheckRef.current >= HAND_TRACKING_FACE_CHECK_INTERVAL_MS
-    ) {
-      faceCheckInFlightRef.current = true;
-      lastFaceCheckRef.current = now;
-
-      faceDetector.detect(videoElement)
-        .then((faces) => {
-          faceSnapshotRef.current = {
-            faces: faces.length,
-            faceBoxes: normalizeFaceBoxes(faces, videoElement),
-            faceTrackingStatus: faces.length ? 'tracking' : 'searching',
-          };
-        })
-        .catch((error) => {
-          console.warn('Face detection failed', error);
-          faceSnapshotRef.current = {
-            faces: 0,
-            faceBoxes: [],
-            faceTrackingStatus: 'error',
-          };
-        })
-        .finally(() => {
-          faceCheckInFlightRef.current = false;
-        });
-    } else if (!faceDetector) {
-      faceSnapshotRef.current = {
-        faces: 0,
-        faceBoxes: [],
-        faceTrackingStatus: 'unsupported',
-      };
-    }
-
-    const result = detectHandsForVideo(processor, videoElement, now);
-    const normalized = normalizeHandTrackingResult(result, previousHandsRef.current);
-    const trackedIds = new Set(normalized.hands.map((hand) => hand.id));
-
-    normalized.hands.forEach((hand) => {
-      lastSeenAtRef.current[hand.id] = now;
-    });
-
-    Object.keys(previousHandsRef.current).forEach((handId) => {
-      const recentlySeen = now - (lastSeenAtRef.current[handId] || 0) < HAND_TRACKING_LOST_HAND_MS;
-      if (!trackedIds.has(handId) && recentlySeen) {
-        normalized.hands.push(previousHandsRef.current[handId]);
-      }
-    });
-
-    previousHandsRef.current = normalized.hands.reduce((accumulator, hand) => {
-      accumulator[hand.id] = hand;
-      return accumulator;
-    }, {});
-
-    return {
-      hands: normalized.hands,
-      faceBoxes: faceSnapshotRef.current.faceBoxes,
-      trackingStatus: normalized.hands.length ? 'tracking' : 'searching',
-      faces: faceSnapshotRef.current.faces,
-      faceTrackingStatus: faceSnapshotRef.current.faceTrackingStatus,
-    };
-  }, [ensureFaceDetector]);
-
-  const drawFrame = useCallback(({ overlayElement, frame }) => {
-    drawHandTrackingOverlay(overlayElement, frame.hands, frame.faceBoxes);
-  }, []);
-
-  const realtime = useVisionRealtimeLoop({
-    autoStart,
-    videoRef,
-    overlayRef,
-    initialFrame: buildInitialFrame,
-    emitIntervalMs: HAND_TRACKING_EMIT_INTERVAL_MS,
-    requestCamera,
-    stopCamera,
-    cameraState,
-    cameraErrorKey,
-    createProcessor: createHandLandmarker,
-    closeProcessor: closeHandLandmarker,
-    detectFrame,
-    drawFrame,
-  });
-
-  const stop = useCallback(() => {
-    clearRuntimeRefs();
-    realtime.stop();
-  }, [clearRuntimeRefs, realtime]);
-
-  const start = useCallback(async () => {
-    clearRuntimeRefs();
-    return realtime.start();
-  }, [clearRuntimeRefs, realtime]);
+  }, [connectVisionSocket, requestCamera, resetState, startLoop, stopCamera]);
 
   const restart = useCallback(async () => {
-    clearRuntimeRefs();
-    return realtime.restart();
-  }, [clearRuntimeRefs, realtime]);
+    stop();
+    return start();
+  }, [start, stop]);
 
-  const frame = useMemo(() => ({
-    ...realtime.frame,
-    debug: {
-      faces: realtime.frame.faces,
-      cameraState: realtime.cameraState,
-      modelState: realtime.modelState,
-    },
-  }), [realtime.cameraState, realtime.frame, realtime.modelState]);
+  useEffect(() => {
+    if (!autoStart) {
+      return undefined;
+    }
+
+    const timerId = setTimeout(() => {
+      start();
+    }, 0);
+
+    return () => {
+      clearTimeout(timerId);
+      stop();
+    };
+  }, [autoStart, start, stop]);
+
+  const state = useMemo(() => {
+    if (error || cameraErrorKey || wsState === 'error' || modelState === 'error') {
+      return 'error';
+    }
+
+    if (
+      cameraState === 'requesting' ||
+      wsState === 'connecting' ||
+      modelState === 'loading'
+    ) {
+      return 'initializing';
+    }
+
+    return frame.trackingStatus || 'idle';
+  }, [cameraErrorKey, cameraState, error, frame.trackingStatus, modelState, wsState]);
 
   return {
     videoRef,
     overlayRef,
     frame,
-    cameraState: realtime.cameraState,
-    modelState: realtime.modelState,
-    trackingState: realtime.state,
-    state: realtime.state,
-    errorKey: realtime.error,
-    error: realtime.error,
+    cameraState,
+    modelState,
+    wsState,
+    pythonState,
+    trackingState: state,
+    state,
+    errorKey: error || cameraErrorKey,
+    error: error || cameraErrorKey,
     start,
-    restart,
     stop,
+    restart,
   };
 }

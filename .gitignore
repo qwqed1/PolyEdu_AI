@@ -3,3 +3,5 @@ node_modules
 .env.local
 .vercel
 package-lock.json
+vision-service/.venv
+vision-service/models/*.task

@@ -109,7 +109,7 @@ export default function HandTrackingStage({
                     {errorKey ? copy.errorTitle : copy.loadingTitle}
                   </h3>
                   <p className="text-sm leading-7 text-white/80">
-                    {errorKey ? copy.errors[errorKey] : copy.loadingBody}
+                    {errorKey ? (copy.errors[errorKey] || errorKey) : copy.loadingBody}
                   </p>
                   <button
                     type="button"
