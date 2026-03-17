@@ -59,7 +59,7 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
       animationFrameRef.current = null;
     }
 
-    drawHandTrackingOverlay(overlayRef.current, []);
+    drawHandTrackingOverlay(overlayRef.current, [], []);
   }, []);
 
   const stop = useCallback(() => {
@@ -147,6 +147,11 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
     const tick = () => {
       const now = performance.now();
       const videoElement = videoRef.current;
+      if (!videoElement || videoElement.readyState < 2) {
+        animationFrameRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
       syncOverlaySize();
 
       const faceDetector = ensureFaceDetector();
@@ -187,7 +192,18 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
         };
       }
 
-      const result = detectHandsForVideo(landmarkerRef.current, videoElement, now);
+      let result = null;
+
+      try {
+        result = detectHandsForVideo(landmarkerRef.current, videoElement, now);
+      } catch (error) {
+        console.error('Hand tracking frame failed', error);
+        setErrorKey('modelUnavailable');
+        setModelState('error');
+        animationFrameRef.current = null;
+        return;
+      }
+
       const normalized = normalizeHandTrackingResult(result, previousHandsRef.current);
       const trackedIds = new Set(normalized.hands.map((hand) => hand.id));
 
@@ -240,6 +256,12 @@ export function useHandTrackingRuntime({ autoStart = true } = {}) {
     const camera = await requestCamera();
     if (!camera.ok) {
       setErrorKey(camera.errorKey);
+      return false;
+    }
+
+    const videoElement = videoRef.current;
+    if (!videoElement || videoElement.readyState < 2) {
+      setErrorKey('cameraUnavailable');
       return false;
     }
 
