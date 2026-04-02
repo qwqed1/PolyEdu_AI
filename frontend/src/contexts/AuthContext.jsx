@@ -28,7 +28,14 @@ export function AuthProvider({ children }) {
   const checkAuth = async () => {
     try {
       const response = await axios.get(`${API_URL}/auth/me`);
-      setUser(normalizeUser(response.data));
+      const normalizedUser = normalizeUser(response.data);
+
+      if (normalizedUser.role !== 'teacher') {
+        logout();
+        return;
+      }
+
+      setUser(normalizedUser);
     } catch (error) {
       console.error('Auth check failed:', error);
       logout();
@@ -37,20 +44,28 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const login = async (email, password, role) => {
-    const response = await axios.post(`${API_URL}/auth/login`, { email, password, role });
-    const { token, user } = response.data;
-    
-    localStorage.setItem('token', token);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    setToken(token);
-    setUser(normalizeUser(user));
-    
-    return normalizeUser(user);
+  const login = async (email, password) => {
+    const response = await axios.post(`${API_URL}/auth/login`, { email, password });
+    const { token: nextToken, user: nextUser } = response.data;
+    const normalizedUser = normalizeUser(nextUser);
+
+    if (normalizedUser.role !== 'teacher') {
+      throw new Error('Student accounts are no longer supported');
+    }
+
+    localStorage.setItem('token', nextToken);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${nextToken}`;
+    setToken(nextToken);
+    setUser(normalizedUser);
+
+    return normalizedUser;
   };
 
   const register = async (userData) => {
-    const response = await axios.post(`${API_URL}/auth/register`, userData);
+    const response = await axios.post(`${API_URL}/auth/register`, {
+      ...userData,
+      role: 'teacher',
+    });
     return response.data;
   };
 

@@ -1,29 +1,23 @@
 import { QuizModel } from '../models/Quiz.js';
 import aiService from '../services/aiService.js';
 
-/**
- * Получить все квизы текущего пользователя
- */
 export const getQuizzes = async (req, res) => {
   try {
     const userId = req.user.id;
     const quizzes = await QuizModel.getAllByUserId(userId);
     res.json({
       success: true,
-      data: quizzes
+      data: quizzes,
     });
   } catch (error) {
     console.error('Error getting quizzes:', error);
     res.status(500).json({
       success: false,
-      error: 'Ошибка при получении списка квизов'
+      error: 'РћС€РёР±РєР° РїСЂРё РїРѕР»СѓС‡РµРЅРёРё СЃРїРёСЃРєР° РєРІРёР·РѕРІ',
     });
   }
 };
 
-/**
- * Получить квиз по ID
- */
 export const getQuizById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -33,26 +27,23 @@ export const getQuizById = async (req, res) => {
     if (!quiz) {
       return res.status(404).json({
         success: false,
-        error: 'Квиз не найден'
+        error: 'РљРІРёР· РЅРµ РЅР°Р№РґРµРЅ',
       });
     }
 
     res.json({
       success: true,
-      data: quiz
+      data: quiz,
     });
   } catch (error) {
     console.error('Error getting quiz:', error);
     res.status(500).json({
       success: false,
-      error: 'Ошибка при получении квиза'
+      error: 'РћС€РёР±РєР° РїСЂРё РїРѕР»СѓС‡РµРЅРёРё РєРІРёР·Р°',
     });
   }
 };
 
-/**
- * Создать новый квиз
- */
 export const createQuiz = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -61,7 +52,7 @@ export const createQuiz = async (req, res) => {
     if (!quizData.title) {
       return res.status(400).json({
         success: false,
-        error: 'Название квиза обязательно'
+        error: 'РќР°Р·РІР°РЅРёРµ РєРІРёР·Р° РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ',
       });
     }
 
@@ -69,20 +60,17 @@ export const createQuiz = async (req, res) => {
     res.status(201).json({
       success: true,
       data: quiz,
-      message: 'Квиз успешно создан'
+      message: 'РљРІРёР· СѓСЃРїРµС€РЅРѕ СЃРѕР·РґР°РЅ',
     });
   } catch (error) {
     console.error('Error creating quiz:', error);
     res.status(500).json({
       success: false,
-      error: 'Ошибка при создании квиза'
+      error: 'РћС€РёР±РєР° РїСЂРё СЃРѕР·РґР°РЅРёРё РєРІРёР·Р°',
     });
   }
 };
 
-/**
- * Обновить квиз
- */
 export const updateQuiz = async (req, res) => {
   try {
     const { id } = req.params;
@@ -94,27 +82,24 @@ export const updateQuiz = async (req, res) => {
     if (!quiz) {
       return res.status(404).json({
         success: false,
-        error: 'Квиз не найден'
+        error: 'РљРІРёР· РЅРµ РЅР°Р№РґРµРЅ',
       });
     }
 
     res.json({
       success: true,
       data: quiz,
-      message: 'Квиз успешно обновлён'
+      message: 'РљРІРёР· СѓСЃРїРµС€РЅРѕ РѕР±РЅРѕРІР»С‘РЅ',
     });
   } catch (error) {
     console.error('Error updating quiz:', error);
     res.status(500).json({
       success: false,
-      error: 'Ошибка при обновлении квиза'
+      error: 'РћС€РёР±РєР° РїСЂРё РѕР±РЅРѕРІР»РµРЅРёРё РєРІРёР·Р°',
     });
   }
 };
 
-/**
- * Удалить квиз
- */
 export const deleteQuiz = async (req, res) => {
   try {
     const { id } = req.params;
@@ -125,154 +110,23 @@ export const deleteQuiz = async (req, res) => {
     if (!deleted) {
       return res.status(404).json({
         success: false,
-        error: 'Квиз не найден'
+        error: 'РљРІРёР· РЅРµ РЅР°Р№РґРµРЅ',
       });
     }
 
     res.json({
       success: true,
-      message: 'Квиз успешно удалён'
+      message: 'РљРІРёР· СѓСЃРїРµС€РЅРѕ СѓРґР°Р»С‘РЅ',
     });
   } catch (error) {
     console.error('Error deleting quiz:', error);
     res.status(500).json({
       success: false,
-      error: 'Ошибка при удалении квиза'
+      error: 'РћС€РёР±РєР° РїСЂРё СѓРґР°Р»РµРЅРёРё РєРІРёР·Р°',
     });
   }
 };
 
-/**
- * Активировать квиз (начать игру)
- */
-export const activateQuiz = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.id;
-
-    const quiz = await QuizModel.activate(id, userId);
-
-    if (!quiz) {
-      return res.status(404).json({
-        success: false,
-        error: 'Квиз не найден'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: quiz,
-      message: `Игра активирована! Код: ${quiz.game_code}`
-    });
-  } catch (error) {
-    console.error('Error activating quiz:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Ошибка при активации квиза'
-    });
-  }
-};
-
-/**
- * Деактивировать квиз (завершить игру)
- */
-export const deactivateQuiz = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.id;
-
-    const quiz = await QuizModel.deactivate(id, userId);
-
-    if (!quiz) {
-      return res.status(404).json({
-        success: false,
-        error: 'Квиз не найден'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: quiz,
-      message: 'Игра завершена'
-    });
-  } catch (error) {
-    console.error('Error deactivating quiz:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Ошибка при деактивации квиза'
-    });
-  }
-};
-
-/**
- * Найти квиз по игровому коду (для студентов)
- */
-export const getQuizByCode = async (req, res) => {
-  try {
-    const { code } = req.params;
-    const quiz = await QuizModel.getByGameCode(code.toUpperCase());
-
-    if (!quiz) {
-      return res.status(404).json({
-        success: false,
-        error: 'Игра не найдена или неактивна'
-      });
-    }
-
-    // Возвращаем данные для игры (с вопросами, но без пометок правильных ответов в preview)
-    const gameData = {
-      id: quiz.id,
-      title: quiz.title,
-      description: quiz.description,
-      type: quiz.type,
-      questionsCount: quiz.questions?.length || 0,
-      settings: {
-        timePerQuestion: quiz.settings?.timePerQuestion || 30,
-        shuffleQuestions: quiz.settings?.shuffleQuestions || false,
-        shuffleAnswers: quiz.settings?.shuffleAnswers || false,
-        pointsPerQuestion: quiz.settings?.pointsPerQuestion || 100
-      }
-    };
-
-    // Возвращаем также полные вопросы для игры
-    const questions = (quiz.questions || []).map(q => ({
-      question: q.question,
-      answers: (q.answers || []).map(a => ({
-        text: a.text,
-        isCorrect: a.isCorrect
-      })),
-      explanation: q.explanation
-    }));
-
-    // Если нужно перемешать вопросы
-    if (quiz.settings?.shuffleQuestions) {
-      questions.sort(() => Math.random() - 0.5);
-    }
-
-    // Если нужно перемешать ответы
-    if (quiz.settings?.shuffleAnswers) {
-      questions.forEach(q => {
-        q.answers.sort(() => Math.random() - 0.5);
-      });
-    }
-
-    res.json({
-      success: true,
-      data: gameData,
-      questions: questions
-    });
-  } catch (error) {
-    console.error('Error finding quiz by code:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Ошибка при поиске игры'
-    });
-  }
-};
-
-/**
- * Генерация вопросов с помощью ИИ
- */
 export const generateQuestions = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -281,36 +135,35 @@ export const generateQuestions = async (req, res) => {
     if (!topic) {
       return res.status(400).json({
         success: false,
-        error: 'Тема обязательна для генерации вопросов'
+        error: 'РўРµРјР° РѕР±СЏР·Р°С‚РµР»СЊРЅР° РґР»СЏ РіРµРЅРµСЂР°С†РёРё РІРѕРїСЂРѕСЃРѕРІ',
       });
     }
 
-    const prompt = `Сгенерируй ${questionsCount} вопросов для интерактивного теста на тему "${topic}".
-    
-Требования:
-- Уровень сложности: ${difficulty === 'easy' ? 'лёгкий' : difficulty === 'medium' ? 'средний' : 'сложный'}
-- Тип вопросов: ${type === 'multiple_choice' ? 'с вариантами ответов (4 варианта, 1 правильный)' : 'true/false'}
-- Формат ответа: JSON массив
+    const prompt = `РЎРіРµРЅРµСЂРёСЂСѓР№ ${questionsCount} РІРѕРїСЂРѕСЃРѕРІ РґР»СЏ РёРЅС‚РµСЂР°РєС‚РёРІРЅРѕРіРѕ С‚РµСЃС‚Р° РЅР° С‚РµРјСѓ "${topic}".
 
-Каждый вопрос должен иметь структуру:
+РўСЂРµР±РѕРІР°РЅРёСЏ:
+- РЈСЂРѕРІРµРЅСЊ СЃР»РѕР¶РЅРѕСЃС‚Рё: ${difficulty === 'easy' ? 'Р»С‘РіРєРёР№' : difficulty === 'medium' ? 'СЃСЂРµРґРЅРёР№' : 'СЃР»РѕР¶РЅС‹Р№'}
+- РўРёРї РІРѕРїСЂРѕСЃРѕРІ: ${type === 'multiple_choice' ? 'СЃ РІР°СЂРёР°РЅС‚Р°РјРё РѕС‚РІРµС‚РѕРІ (4 РІР°СЂРёР°РЅС‚Р°, 1 РїСЂР°РІРёР»СЊРЅС‹Р№)' : 'true/false'}
+- Р¤РѕСЂРјР°С‚ РѕС‚РІРµС‚Р°: JSON РјР°СЃСЃРёРІ
+
+РљР°Р¶РґС‹Р№ РІРѕРїСЂРѕСЃ РґРѕР»Р¶РµРЅ РёРјРµС‚СЊ СЃС‚СЂСѓРєС‚СѓСЂСѓ:
 {
-  "question": "Текст вопроса",
+  "question": "РўРµРєСЃС‚ РІРѕРїСЂРѕСЃР°",
   "answers": [
-    {"text": "Ответ 1", "isCorrect": true},
-    {"text": "Ответ 2", "isCorrect": false},
-    {"text": "Ответ 3", "isCorrect": false},
-    {"text": "Ответ 4", "isCorrect": false}
+    {"text": "РћС‚РІРµС‚ 1", "isCorrect": true},
+    {"text": "РћС‚РІРµС‚ 2", "isCorrect": false},
+    {"text": "РћС‚РІРµС‚ 3", "isCorrect": false},
+    {"text": "РћС‚РІРµС‚ 4", "isCorrect": false}
   ],
-  "explanation": "Краткое объяснение правильного ответа"
+  "explanation": "РљСЂР°С‚РєРѕРµ РѕР±СЉСЏСЃРЅРµРЅРёРµ РїСЂР°РІРёР»СЊРЅРѕРіРѕ РѕС‚РІРµС‚Р°"
 }
 
-Верни ТОЛЬКО JSON массив вопросов, без дополнительного текста.`;
+Р’РµСЂРЅРё РўРћР›Р¬РљРћ JSON РјР°СЃСЃРёРІ РІРѕРїСЂРѕСЃРѕРІ, Р±РµР· РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕРіРѕ С‚РµРєСЃС‚Р°.`;
 
     const aiResponse = await aiService.sendMessage(prompt, userId, 'quiz_generation');
 
     let questions = [];
     try {
-      // Попытка распарсить ответ ИИ как JSON
       const responseText = aiResponse.data?.response || '';
       const jsonMatch = responseText.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
@@ -320,14 +173,13 @@ export const generateQuestions = async (req, res) => {
       console.error('Error parsing AI response:', parseError);
       return res.status(500).json({
         success: false,
-        error: 'Ошибка при обработке ответа ИИ. Попробуйте ещё раз.'
+        error: 'РћС€РёР±РєР° РїСЂРё РѕР±СЂР°Р±РѕС‚РєРµ РѕС‚РІРµС‚Р° РР. РџРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰С‘ СЂР°Р·.',
       });
     }
 
-    // Добавляем ID к каждому вопросу
     questions = questions.map((q, index) => ({
       ...q,
-      id: `q_${Date.now()}_${index}`
+      id: `q_${Date.now()}_${index}`,
     }));
 
     res.json({
@@ -335,56 +187,18 @@ export const generateQuestions = async (req, res) => {
       data: {
         questions,
         topic,
-        generatedAt: new Date().toISOString()
-      }
+        generatedAt: new Date().toISOString(),
+      },
     });
   } catch (error) {
     console.error('Error generating questions:', error);
     res.status(500).json({
       success: false,
-      error: 'Ошибка при генерации вопросов'
+      error: 'РћС€РёР±РєР° РїСЂРё РіРµРЅРµСЂР°С†РёРё РІРѕРїСЂРѕСЃРѕРІ',
     });
   }
 };
 
-/**
- * Получить все активные квизы (для студентов)
- */
-export const getActiveQuizzes = async (req, res) => {
-  try {
-    const quizzes = await QuizModel.getActiveQuizzes();
-    
-    // Возвращаем данные без game_code (ученик должен ввести код сам)
-    const sanitized = quizzes.map(q => ({
-      id: q.id,
-      title: q.title,
-      description: q.description,
-      type: q.type,
-      questionsCount: parseInt(q.questions_count) || 0,
-      teacherName: q.teacher_name,
-      settings: {
-        timePerQuestion: q.settings?.timePerQuestion || 30,
-        pointsPerQuestion: q.settings?.pointsPerQuestion || 100
-      },
-      createdAt: q.created_at
-    }));
-
-    res.json({
-      success: true,
-      data: sanitized
-    });
-  } catch (error) {
-    console.error('Error getting active quizzes:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Ошибка при получении активных квизов'
-    });
-  }
-};
-
-/**
- * Получить статистику квизов
- */
 export const getQuizStats = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -392,13 +206,13 @@ export const getQuizStats = async (req, res) => {
 
     res.json({
       success: true,
-      data: stats
+      data: stats,
     });
   } catch (error) {
     console.error('Error getting quiz stats:', error);
     res.status(500).json({
       success: false,
-      error: 'Ошибка при получении статистики'
+      error: 'РћС€РёР±РєР° РїСЂРё РїРѕР»СѓС‡РµРЅРёРё СЃС‚Р°С‚РёСЃС‚РёРєРё',
     });
   }
 };

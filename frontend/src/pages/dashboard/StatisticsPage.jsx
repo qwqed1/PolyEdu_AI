@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Users, BookOpen, TrendingUp, Award } from 'lucide-react';
+import { ArrowLeft, Users, BookOpen, Award } from 'lucide-react';
 import statsService from '../../services/statsService';
 
 export default function StatisticsPage() {
@@ -35,7 +35,7 @@ export default function StatisticsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-neutral-50 dark:bg-dark-bg flex items-center justify-center">
-        <div className="text-xl text-neutral-600 dark:text-neutral-400">Загрузка статистики...</div>
+        <div className="text-xl text-neutral-600 dark:text-neutral-400">Р—Р°РіСЂСѓР·РєР° СЃС‚Р°С‚РёСЃС‚РёРєРё...</div>
       </div>
     );
   }
@@ -45,22 +45,21 @@ export default function StatisticsPage() {
       <div className="max-w-7xl mx-auto">
         <Link to="/dashboard" className="inline-flex items-center gap-2 text-primary-600 dark:text-primary-400 mb-6 hover:underline">
           <ArrowLeft className="w-5 h-5" />
-          Назад к профилю
+          РќР°Р·Р°Рґ Рє РїСЂРѕС„РёР»СЋ
         </Link>
 
         <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-8">
-          📊 Статистика
+          рџ“Љ РЎС‚Р°С‚РёСЃС‚РёРєР°
         </h1>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
                 <Users className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">Всего групп</p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">Р’СЃРµРіРѕ РіСЂСѓРїРї</p>
                 <p className="text-2xl font-bold text-neutral-900 dark:text-white">
                   {stats?.summary?.total_groups || 0}
                 </p>
@@ -74,23 +73,9 @@ export default function StatisticsPage() {
                 <BookOpen className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">Всего студентов</p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">Р’СЃРµРіРѕ СЃС‚СѓРґРµРЅС‚РѕРІ</p>
                 <p className="text-2xl font-bold text-neutral-900 dark:text-white">
                   {stats?.summary?.total_students || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">Занятий в неделю</p>
-                <p className="text-2xl font-bold text-neutral-900 dark:text-white">
-                  {stats?.summary?.weekly_lessons || 0}
                 </p>
               </div>
             </div>
@@ -102,7 +87,7 @@ export default function StatisticsPage() {
                 <Award className="w-6 h-6 text-yellow-600" />
               </div>
               <div>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">Средний балл</p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">РЎСЂРµРґРЅРёР№ Р±Р°Р»Р»</p>
                 <p className={`text-2xl font-bold ${getGradeColor(stats?.summary?.average_grade)}`}>
                   {stats?.summary?.average_grade || '-'}
                 </p>
@@ -111,26 +96,25 @@ export default function StatisticsPage() {
           </div>
         </div>
 
-        {/* Groups Statistics */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-4">
-            Статистика по группам
+            РЎС‚Р°С‚РёСЃС‚РёРєР° РїРѕ РіСЂСѓРїРїР°Рј
           </h2>
           {stats?.groups?.length === 0 ? (
             <p className="text-neutral-600 dark:text-neutral-400 text-center py-8">
-              Нет групп для отображения
+              РќРµС‚ РіСЂСѓРїРї РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-neutral-200 dark:border-gray-700">
-                    <th className="text-left py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">Группа</th>
-                    <th className="text-center py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">Студентов</th>
-                    <th className="text-center py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">Оценок</th>
-                    <th className="text-center py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">Средний балл</th>
-                    <th className="text-center py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">Мин</th>
-                    <th className="text-center py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">Макс</th>
+                    <th className="text-left py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">Р“СЂСѓРїРїР°</th>
+                    <th className="text-center py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">РЎС‚СѓРґРµРЅС‚РѕРІ</th>
+                    <th className="text-center py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">РћС†РµРЅРѕРє</th>
+                    <th className="text-center py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">РЎСЂРµРґРЅРёР№ Р±Р°Р»Р»</th>
+                    <th className="text-center py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">РњРёРЅ</th>
+                    <th className="text-center py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">РњР°РєСЃ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -164,14 +148,13 @@ export default function StatisticsPage() {
           )}
         </div>
 
-        {/* Students Top */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
           <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-4">
-            Рейтинг студентов
+            Р РµР№С‚РёРЅРі СЃС‚СѓРґРµРЅС‚РѕРІ
           </h2>
           {stats?.students?.length === 0 ? (
             <p className="text-neutral-600 dark:text-neutral-400 text-center py-8">
-              Нет студентов для отображения
+              РќРµС‚ СЃС‚СѓРґРµРЅС‚РѕРІ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -179,10 +162,10 @@ export default function StatisticsPage() {
                 <thead>
                   <tr className="border-b border-neutral-200 dark:border-gray-700">
                     <th className="text-left py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">#</th>
-                    <th className="text-left py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">Студент</th>
-                    <th className="text-left py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">Группа</th>
-                    <th className="text-center py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">Оценок</th>
-                    <th className="text-center py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">Средний балл</th>
+                    <th className="text-left py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">РЎС‚СѓРґРµРЅС‚</th>
+                    <th className="text-left py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">Р“СЂСѓРїРїР°</th>
+                    <th className="text-center py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">РћС†РµРЅРѕРє</th>
+                    <th className="text-center py-3 px-4 text-neutral-600 dark:text-neutral-400 font-medium">РЎСЂРµРґРЅРёР№ Р±Р°Р»Р»</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -190,7 +173,7 @@ export default function StatisticsPage() {
                     <tr key={student.id} className="border-b border-neutral-100 dark:border-gray-700/50 hover:bg-neutral-50 dark:hover:bg-gray-700/30">
                       <td className="py-3 px-4">
                         {index < 3 ? (
-                          <span className="text-xl">{index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}</span>
+                          <span className="text-xl">{index === 0 ? 'рџҐ‡' : index === 1 ? 'рџҐ€' : 'рџҐ‰'}</span>
                         ) : (
                           <span className="text-neutral-600 dark:text-neutral-400">{index + 1}</span>
                         )}

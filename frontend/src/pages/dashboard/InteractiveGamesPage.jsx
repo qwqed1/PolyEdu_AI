@@ -1,9 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { 
-  Gamepad2, Plus, Play, Pause, Trash2, Edit, Copy, 
-  Users, HelpCircle, Sparkles, Clock, Award, BarChart3,
-  ListChecks, Wand2, Monitor
+import {
+  Gamepad2,
+  Plus,
+  Trash2,
+  Edit,
+  HelpCircle,
+  Sparkles,
+  BarChart3,
+  ListChecks,
+  Wand2,
+  CheckCircle2,
 } from 'lucide-react';
 import quizService from '../../services/quizService';
 
@@ -24,7 +31,7 @@ export default function InteractiveGamesPage() {
       setLoading(true);
       const [quizzesRes, statsRes] = await Promise.all([
         quizService.getQuizzes(),
-        quizService.getStats()
+        quizService.getStats(),
       ]);
       setQuizzes(quizzesRes.data || []);
       setStats(statsRes.data);
@@ -33,29 +40,6 @@ export default function InteractiveGamesPage() {
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleActivate = async (id) => {
-    try {
-      const result = await quizService.activateQuiz(id);
-      if (result.success) {
-        // After activation, navigate to lobby
-        navigate(`/interactive-games/${id}/lobby`, {
-          state: { quiz: result.data }
-        });
-      }
-    } catch (err) {
-      console.error('Error activating quiz:', err);
-    }
-  };
-
-  const handleDeactivate = async (id) => {
-    try {
-      await quizService.deactivateQuiz(id);
-      loadData();
-    } catch (err) {
-      console.error('Error deactivating quiz:', err);
     }
   };
 
@@ -69,10 +53,6 @@ export default function InteractiveGamesPage() {
     }
   };
 
-  const copyGameCode = (code) => {
-    navigator.clipboard.writeText(code);
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -81,9 +61,10 @@ export default function InteractiveGamesPage() {
     );
   }
 
+  const readyQuizzes = quizzes.filter((quiz) => Number(quiz.questions_count || 0) > 0).length;
+
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-dark-bg flex">
-      {/* Left Sidebar */}
       <div className="hidden lg:flex w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-col flex-shrink-0">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -132,10 +113,8 @@ export default function InteractiveGamesPage() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 py-4 sm:py-8 px-4 sm:px-6 lg:px-8 overflow-y-auto w-full">
         <div className="max-w-6xl mx-auto">
-          {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold text-neutral-900 dark:text-white flex items-center gap-3">
@@ -143,7 +122,7 @@ export default function InteractiveGamesPage() {
                 Интерактивные игры
               </h1>
               <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-                Создавайте увлекательные тесты и викторины для студентов
+                Собирайте учебные викторины, редактируйте вопросы и храните результаты в одном месте.
               </p>
             </div>
             <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
@@ -164,7 +143,6 @@ export default function InteractiveGamesPage() {
             </div>
           </div>
 
-          {/* Stats Cards */}
           {stats && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
               <div className="card flex items-center gap-4">
@@ -180,13 +158,13 @@ export default function InteractiveGamesPage() {
               </div>
               <div className="card flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                  <Play className="w-6 h-6 text-green-500" />
+                  <CheckCircle2 className="w-6 h-6 text-green-500" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-neutral-900 dark:text-white">
-                    {stats.active_quizzes || 0}
+                    {readyQuizzes}
                   </p>
-                  <p className="text-sm text-neutral-500">Активных</p>
+                  <p className="text-sm text-neutral-500">Готовых</p>
                 </div>
               </div>
               <div className="card flex items-center gap-4">
@@ -209,7 +187,6 @@ export default function InteractiveGamesPage() {
             </div>
           )}
 
-          {/* Quizzes Grid */}
           {quizzes.length === 0 ? (
             <div className="card text-center py-16">
               <Sparkles className="w-16 h-16 mx-auto text-primary-400 mb-4" />
@@ -217,7 +194,7 @@ export default function InteractiveGamesPage() {
                 У вас пока нет игр
               </h3>
               <p className="text-neutral-500 mb-6">
-                Создайте первую интерактивную игру для ваших студентов
+                Создайте первую викторину, чтобы подготовить интерактивное занятие.
               </p>
               <div className="flex items-center justify-center gap-3">
                 <Link
@@ -243,7 +220,6 @@ export default function InteractiveGamesPage() {
                   key={quiz.id}
                   className="card hover:shadow-lg transition-shadow duration-200 overflow-hidden"
                 >
-                  {/* Type Badge */}
                   <div className="flex items-center justify-between mb-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                       quiz.type === 'kahoot'
@@ -252,15 +228,8 @@ export default function InteractiveGamesPage() {
                     }`}>
                       {quiz.type === 'kahoot' ? 'Kahoot стиль' : 'Quizizz стиль'}
                     </span>
-                    {quiz.is_active && (
-                      <span className="flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-semibold">
-                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                        Активна
-                      </span>
-                    )}
                   </div>
 
-                  {/* Title & Description */}
                   <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2 line-clamp-2">
                     {quiz.title}
                   </h3>
@@ -270,79 +239,15 @@ export default function InteractiveGamesPage() {
                     </p>
                   )}
 
-                  {/* Meta Info */}
                   <div className="flex items-center gap-4 text-sm text-neutral-500 mb-4">
                     <span className="flex items-center gap-1">
                       <HelpCircle className="w-4 h-4" />
                       {quiz.questions_count || 0} вопросов
                     </span>
-                    {quiz.subject_name && (
-                      <span className="flex items-center gap-1">
-                        <Award className="w-4 h-4" />
-                        {quiz.subject_name}
-                      </span>
-                    )}
                   </div>
 
-                  {/* Game Code (if active) */}
-                  {quiz.is_active && quiz.game_code && (
-                    <div className="mb-4 p-3 bg-neutral-100 dark:bg-dark-surface rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-neutral-500 mb-1">Код игры</p>
-                          <p className="text-2xl font-mono font-bold text-primary-500 tracking-wider">
-                            {quiz.game_code}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => copyGameCode(quiz.game_code)}
-                            className="p-2 hover:bg-neutral-200 dark:hover:bg-dark-border rounded-lg transition-colors"
-                            title="Копировать код"
-                          >
-                            <Copy className="w-5 h-5 text-neutral-500" />
-                          </button>
-                          <button
-                            onClick={() => navigate(`/interactive-games/${quiz.id}/lobby`, { state: { quiz } })}
-                            className="p-2 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
-                            title="Открыть лобби"
-                          >
-                            <Monitor className="w-5 h-5 text-indigo-500" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Actions */}
                   <div className="flex items-center justify-between pt-4 border-t border-neutral-200 dark:border-dark-border">
                     <div className="flex items-center gap-2">
-                      {quiz.is_active ? (
-                        <>
-                          <button
-                            onClick={() => handleDeactivate(quiz.id)}
-                            className="p-2 text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
-                            title="Остановить игру"
-                          >
-                            <Pause className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => navigate(`/interactive-games/${quiz.id}/lobby`, { state: { quiz } })}
-                            className="p-2 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
-                            title="Открыть лобби"
-                          >
-                            <Monitor className="w-5 h-5" />
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => handleActivate(quiz.id)}
-                          className="p-2 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
-                          title="Запустить игру"
-                        >
-                          <Play className="w-5 h-5" />
-                        </button>
-                      )}
                       <Link
                         to={`/interactive-games/${quiz.id}/results`}
                         className="p-2 text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"

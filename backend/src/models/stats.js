@@ -2,16 +2,14 @@ import pool from '../config/db.js';
 
 export const StatsModel = {
   /**
-   * Получить общую статистику преподавателя
+   * РџРѕР»СѓС‡РёС‚СЊ РѕР±С‰СѓСЋ СЃС‚Р°С‚РёСЃС‚РёРєСѓ РїСЂРµРїРѕРґР°РІР°С‚РµР»СЏ
    */
   async getTeacherStats(userId) {
-    // Количество групп
     const groupsResult = await pool.query(
       'SELECT COUNT(*) as count FROM groups WHERE user_id = $1',
       [userId]
     );
-    
-    // Количество студентов (во всех группах преподавателя)
+
     const studentsResult = await pool.query(
       `SELECT COUNT(DISTINCT s.id) as count 
        FROM students s
@@ -19,14 +17,7 @@ export const StatsModel = {
        WHERE g.user_id = $1`,
       [userId]
     );
-    
-    // Занятий на неделе (из расписания)
-    const schedulesResult = await pool.query(
-      'SELECT COUNT(*) as count FROM schedules WHERE user_id = $1',
-      [userId]
-    );
-    
-    // Средний балл по всем студентам преподавателя
+
     const avgGradeResult = await pool.query(
       `SELECT ROUND(AVG(gr.grade)::numeric, 2) as average_grade
        FROM grades gr
@@ -35,17 +26,16 @@ export const StatsModel = {
        WHERE g.user_id = $1`,
       [userId]
     );
-    
+
     return {
       total_groups: parseInt(groupsResult.rows[0].count) || 0,
       total_students: parseInt(studentsResult.rows[0].count) || 0,
-      weekly_lessons: parseInt(schedulesResult.rows[0].count) || 0,
       average_grade: avgGradeResult.rows[0].average_grade || null
     };
   },
 
   /**
-   * Получить детальную статистику по группам
+   * РџРѕР»СѓС‡РёС‚СЊ РґРµС‚Р°Р»СЊРЅСѓСЋ СЃС‚Р°С‚РёСЃС‚РёРєСѓ РїРѕ РіСЂСѓРїРїР°Рј
    */
   async getGroupsStats(userId) {
     const result = await pool.query(
@@ -69,7 +59,7 @@ export const StatsModel = {
   },
 
   /**
-   * Получить статистику по студентам
+   * РџРѕР»СѓС‡РёС‚СЊ СЃС‚Р°С‚РёСЃС‚РёРєСѓ РїРѕ СЃС‚СѓРґРµРЅС‚Р°Рј
    */
   async getStudentsStats(userId) {
     const result = await pool.query(

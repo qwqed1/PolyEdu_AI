@@ -87,18 +87,6 @@ export const GameResultModel = {
   /**
    * Получить топ игроков квиза
    */
-  async getLeaderboard(quizId, limit = 10) {
-    const result = await pool.query(
-      `SELECT player_name, score, correct_answers, total_questions, time_spent, completed_at
-       FROM game_results 
-       WHERE quiz_id = $1 
-       ORDER BY score DESC, time_spent ASC
-       LIMIT $2`,
-      [quizId, limit]
-    );
-    return result.rows;
-  },
-
   /**
    * Удалить все результаты квиза
    */

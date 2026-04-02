@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Link } from 'react-router-dom';
 import Card from '../../components/common/Card';
-import { User, Building2, Briefcase, Mail, Bot, Users, GraduationCap, Calendar, BarChart2, Book, Gamepad2, FlaskConical, Sparkles } from 'lucide-react';
+import { User, Building2, Briefcase, Mail, Bot, Users, GraduationCap, BarChart2, Book, Gamepad2, FlaskConical, Sparkles } from 'lucide-react';
 import statsService from '../../services/statsService';
 
 export default function TeacherDashboardPage() {
@@ -12,7 +12,6 @@ export default function TeacherDashboardPage() {
   const [stats, setStats] = useState({
     total_groups: 0,
     total_students: 0,
-    weekly_lessons: 0,
     average_grade: null,
   });
   const [loading, setLoading] = useState(true);
@@ -39,10 +38,10 @@ export default function TeacherDashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">
-            Добро пожаловать, {user?.full_name}!
+            Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ, {user?.full_name}!
           </h1>
           <p className="text-neutral-600 dark:text-neutral-400">
-            Управляйте группами, материалами и интерактивными активностями
+            РЈРїСЂР°РІР»СЏР№С‚Рµ РіСЂСѓРїРїР°РјРё, РјР°С‚РµСЂРёР°Р»Р°РјРё Рё РёРЅС‚РµСЂР°РєС‚РёРІРЅС‹РјРё Р°РєС‚РёРІРЅРѕСЃС‚СЏРјРё
           </p>
         </div>
 
@@ -58,11 +57,11 @@ export default function TeacherDashboardPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-center gap-2 text-neutral-600 dark:text-neutral-400">
                   <Building2 className="w-4 h-4" />
-                  {user?.institution || 'Не указано'}
+                  {user?.institution || 'РќРµ СѓРєР°Р·Р°РЅРѕ'}
                 </div>
                 <div className="flex items-center justify-center gap-2 text-neutral-600 dark:text-neutral-400">
                   <Briefcase className="w-4 h-4" />
-                  {user?.position || 'Преподаватель'}
+                  {user?.position || 'РџСЂРµРїРѕРґР°РІР°С‚РµР»СЊ'}
                 </div>
                 <div className="flex items-center justify-center gap-2 text-neutral-600 dark:text-neutral-400">
                   <Mail className="w-4 h-4" />
@@ -76,7 +75,7 @@ export default function TeacherDashboardPage() {
             <Card>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-1">Всего групп</p>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-1">Р’СЃРµРіРѕ РіСЂСѓРїРї</p>
                   <p className="text-3xl font-bold text-neutral-900 dark:text-white">
                     {loading ? '...' : stats.total_groups}
                   </p>
@@ -90,7 +89,7 @@ export default function TeacherDashboardPage() {
             <Card>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-1">Всего студентов</p>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-1">Р’СЃРµРіРѕ СЃС‚СѓРґРµРЅС‚РѕРІ</p>
                   <p className="text-3xl font-bold text-neutral-900 dark:text-white">
                     {loading ? '...' : stats.total_students}
                   </p>
@@ -101,24 +100,10 @@ export default function TeacherDashboardPage() {
               </div>
             </Card>
 
-            <Card>
+            <Card className="sm:col-span-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-1">Занятий на неделе</p>
-                  <p className="text-3xl font-bold text-neutral-900 dark:text-white">
-                    {loading ? '...' : stats.weekly_lessons}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center text-primary-600 dark:text-primary-400">
-                  <span className="text-2xl"><Calendar className="w-6 h-6" /></span>
-                </div>
-              </div>
-            </Card>
-
-            <Card>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-1">Средний балл</p>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-1">РЎСЂРµРґРЅРёР№ Р±Р°Р»Р»</p>
                   <p className="text-3xl font-bold text-neutral-900 dark:text-white">
                     {loading ? '...' : (stats.average_grade || '-')}
                   </p>
@@ -132,19 +117,19 @@ export default function TeacherDashboardPage() {
         </div>
 
         <Card>
-          <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-4">Быстрые действия</h3>
+          <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-4">Р‘С‹СЃС‚СЂС‹Рµ РґРµР№СЃС‚РІРёСЏ</h3>
           <div className="grid sm:grid-cols-2 md:grid-cols-6 gap-4">
             <Link to="/groups" className="p-4 border-2 border-neutral-200 dark:border-dark-border rounded-lg hover:border-primary-600 dark:hover:border-primary-500 transition-default text-center group">
               <div className="flex items-center justify-center mb-2 text-primary-600 dark:text-primary-400 group-hover:scale-110 transition-transform"><Users className="w-8 h-8" /></div>
-              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Группы</p>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Р“СЂСѓРїРїС‹</p>
             </Link>
             <Link to="/lesson-plans" className="p-4 border-2 border-neutral-200 dark:border-dark-border rounded-lg hover:border-primary-600 dark:hover:border-primary-500 transition-default text-center group">
               <div className="flex items-center justify-center mb-2 text-primary-600 dark:text-primary-400 group-hover:scale-110 transition-transform"><Book className="w-8 h-8" /></div>
-              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Планы уроков</p>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">РџР»Р°РЅС‹ СѓСЂРѕРєРѕРІ</p>
             </Link>
             <Link to="/interactive-games" className="p-4 border-2 border-neutral-200 dark:border-dark-border rounded-lg hover:border-primary-600 dark:hover:border-primary-500 transition-default text-center group">
               <div className="flex items-center justify-center mb-2 text-primary-600 dark:text-primary-400 group-hover:scale-110 transition-transform"><Gamepad2 className="w-8 h-8" /></div>
-              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Игры</p>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">РРіСЂС‹</p>
             </Link>
             <Link to="/lab" className="p-4 border-2 border-neutral-200 dark:border-dark-border rounded-lg hover:border-primary-600 dark:hover:border-primary-500 transition-default text-center group">
               <div className="flex items-center justify-center mb-2 text-primary-600 dark:text-primary-400 group-hover:scale-110 transition-transform"><FlaskConical className="w-8 h-8" /></div>
@@ -158,7 +143,7 @@ export default function TeacherDashboardPage() {
               <div className="flex items-center justify-center mb-2">
                 <Bot className="w-8 h-8 text-primary-600 dark:text-primary-500 group-hover:scale-110 transition-transform" />
               </div>
-              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Чат с ИИ</p>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Р§Р°С‚ СЃ РР</p>
             </Link>
           </div>
         </Card>

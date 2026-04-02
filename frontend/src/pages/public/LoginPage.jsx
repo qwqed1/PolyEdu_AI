@@ -9,7 +9,6 @@ import Card from '../../components/common/Card';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('student');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -22,10 +21,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password, role);
+      await login(email, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || t.auth.authError);
+      setError(err.response?.data?.message || err.message || t.auth.authError);
     } finally {
       setLoading(false);
     }
@@ -42,41 +41,11 @@ export default function LoginPage() {
           </div>
           <h1 className="text-3xl font-bold gradient-text-primary mb-2">PolyEduAI</h1>
           <p className="text-neutral-600 dark:text-neutral-400">
-            {t.auth.loginTitle(role)}
+            {t.auth.loginTitle('teacher')}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-              {t.auth.loginAs}
-            </label>
-            <div className="grid grid-cols-2 gap-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 p-1">
-              <button
-                type="button"
-                onClick={() => setRole('student')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  role === 'student'
-                    ? 'bg-white dark:bg-neutral-700 text-primary-600 dark:text-primary-400 shadow-sm'
-                    : 'text-neutral-600 dark:text-neutral-300'
-                }`}
-              >
-                {t.auth.student}
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole('teacher')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  role === 'teacher'
-                    ? 'bg-white dark:bg-neutral-700 text-primary-600 dark:text-primary-400 shadow-sm'
-                    : 'text-neutral-600 dark:text-neutral-300'
-                }`}
-              >
-                {t.auth.teacher}
-              </button>
-            </div>
-          </div>
-
           <Input
             label={t.auth.email}
             type="email"
@@ -91,7 +60,7 @@ export default function LoginPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
+            placeholder="********"
             required
           />
 
