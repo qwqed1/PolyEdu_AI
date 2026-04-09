@@ -57,4 +57,43 @@
   .transition-default {
     @apply transition-all duration-200 ease-in-out;
   }
+
+  .lab-fade-up {
+    animation: labFadeUp 0.7s ease-out both;
+  }
+
+  .lab-orb {
+    animation: labFloat 9s ease-in-out infinite;
+  }
+
+  .lab-grid {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 26px 26px;
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), transparent);
+  }
+}
+
+@keyframes labFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes labFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(0, -10px, 0) scale(1.05);
+  }
 }
