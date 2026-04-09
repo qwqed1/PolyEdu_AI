@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import PrivateRoute from './components/common/PrivateRoute';
+import MojibakeGuard from './components/common/MojibakeGuard';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import LoginPage from './pages/public/LoginPage';
@@ -49,6 +50,7 @@ function App() {
       <LanguageProvider>
         <ThemeProvider>
           <AuthProvider>
+            <MojibakeGuard />
             <Suspense
               fallback={
                 <div className="flex min-h-screen items-center justify-center">
