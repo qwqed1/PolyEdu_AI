@@ -25,6 +25,7 @@ import CreateQuizPage from './pages/dashboard/CreateQuizPage';
 import QuizResultsPage from './pages/dashboard/QuizResultsPage';
 import GameGeneratorPage from './pages/dashboard/GameGeneratorPage';
 import GroupSplitterPage from './pages/dashboard/GroupSplitterPage';
+import RandomStudentPickerPage from './pages/dashboard/RandomStudentPickerPage';
 
 const LabPage = lazy(() => import('./pages/dashboard/LabPage'));
 const BrainBreakPage = lazy(() => import('./pages/dashboard/BrainBreakPage'));
@@ -188,6 +189,14 @@ function App() {
                             element={
                               <PrivateRoute roles={['teacher']}>
                                 <GroupSplitterPage />
+                              </PrivateRoute>
+                            }
+                          />
+                          <Route
+                            path="/random-student"
+                            element={
+                              <PrivateRoute roles={['teacher']}>
+                                <RandomStudentPickerPage />
                               </PrivateRoute>
                             }
                           />
