@@ -131,17 +131,18 @@ async function fetchPublishedQuizzes({ subjectFilter, searchFilter }) {
        q.type,
        q.published_at,
        q.created_at,
-       s.name AS subject_name,
+       COALESCE(s.name, lp.subject_name) AS subject_name,
        jsonb_array_length(q.questions) AS questions_count
      FROM quizzes q
      LEFT JOIN subjects s ON q.subject_id = s.id
+     LEFT JOIN lesson_plans lp ON q.source_lesson_plan_id = lp.id
      WHERE q.is_public = true
-       AND ($1::text IS NULL OR s.name ILIKE $1)
+       AND ($1::text IS NULL OR COALESCE(s.name, lp.subject_name, '') ILIKE $1)
        AND (
          $2::text IS NULL
          OR q.title ILIKE $2
          OR COALESCE(q.description, '') ILIKE $2
-         OR COALESCE(s.name, '') ILIKE $2
+         OR COALESCE(s.name, lp.subject_name, '') ILIKE $2
        )
      ORDER BY q.published_at DESC NULLS LAST, q.created_at DESC`,
     params
