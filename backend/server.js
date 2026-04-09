@@ -1,25 +1,27 @@
-import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import authRoutes from './src/routes/auth.js';
+import express from 'express';
+import pool from './src/config/db.js';
 import aiRoutes from './src/routes/ai.js';
 import aiDataRoutes from './src/routes/aiData.js';
-import groupRoutes from './src/routes/groups.js';
-import studentRoutes from './src/routes/students.js';
-import gradeRoutes from './src/routes/grades.js';
-import statsRoutes from './src/routes/stats.js';
-import subjectRoutes from './src/routes/subjects.js';
-import lessonPlansRoutes from './src/routes/lessonPlans.js';
-import quizRoutes from './src/routes/quiz.js';
-import moduleRoutes from './src/routes/modules.js';
 import aiGameRoutes from './src/routes/aiGames.js';
+import authRoutes from './src/routes/auth.js';
 import chemistryRoutes from './src/routes/chemistry.js';
+import gradeRoutes from './src/routes/grades.js';
+import groupRoutes from './src/routes/groups.js';
+import lessonPlansRoutes from './src/routes/lessonPlans.js';
 import mathHandwritingRoutes from './src/routes/mathHandwriting.js';
-import pool from './src/config/db.js';
-import { QuizModel } from './src/models/Quiz.js';
-import { GameResultModel } from './src/models/GameResult.js';
-import { ModuleModel } from './src/models/modules.js';
+import moduleRoutes from './src/routes/modules.js';
+import publicRoutes from './src/routes/public.js';
+import quizRoutes from './src/routes/quiz.js';
+import statsRoutes from './src/routes/stats.js';
+import studentRoutes from './src/routes/students.js';
+import subjectRoutes from './src/routes/subjects.js';
 import { AIGameModel } from './src/models/aiGames.js';
+import { GameResultModel } from './src/models/GameResult.js';
+import { LessonPlanModel } from './src/models/lessonPlans.js';
+import { ModuleModel } from './src/models/modules.js';
+import { QuizModel } from './src/models/Quiz.js';
 import { UserModel } from './src/models/User.js';
 
 dotenv.config();
@@ -41,6 +43,7 @@ app.use('/api/stats', statsRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/lesson-plans', lessonPlansRoutes);
 app.use('/api/quiz', quizRoutes);
+app.use('/api/public', publicRoutes);
 app.use('/api', moduleRoutes);
 app.use('/api/ai-games', aiGameRoutes);
 app.use('/api/chemistry', chemistryRoutes);
@@ -75,31 +78,35 @@ app.get('/health', async (req, res) => {
 const initDatabase = async () => {
   try {
     await pool.query('SELECT NOW()');
-    console.log('РІСљвЂњ Database connected');
+    console.log('Database connected');
 
     await UserModel.ensureRoleColumn();
-    console.log('РІСљвЂњ Users role column ensured');
+    console.log('Users role column ensured');
+
+    await LessonPlanModel.initTable();
+    console.log('Lesson plans table initialized');
 
     await QuizModel.initTable();
-    console.log('РІСљвЂњ Quizzes table initialized');
+    console.log('Quizzes table initialized');
 
     await GameResultModel.initTable();
-    console.log('РІСљвЂњ Game results table initialized');
+    console.log('Game results table initialized');
 
     await ModuleModel.initTable();
-    console.log('РІСљвЂњ Modules table initialized');
+    console.log('Modules table initialized');
 
     await AIGameModel.initTable();
-    console.log('РІСљвЂњ AI Games table initialized');
+    console.log('AI games table initialized');
   } catch (err) {
-    console.error('РІСњРЉ Database initialization error:', err);
+    console.error('Database initialization error:', err);
   }
 };
 
+initDatabase();
+
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   app.listen(PORT, () => {
-    console.log(`СЂСџС™Р‚ Server running on http://localhost:${PORT}`);
-    initDatabase();
+    console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 

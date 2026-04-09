@@ -10,6 +10,10 @@ import Footer from './components/layout/Footer';
 import LoginPage from './pages/public/LoginPage';
 import RegisterPage from './pages/public/RegisterPage';
 import LandingPage from './pages/public/LandingPage';
+import LibraryPage from './pages/public/LibraryPage';
+import PublicLessonPlanPage from './pages/public/PublicLessonPlanPage';
+import PublicQuizPage from './pages/public/PublicQuizPage';
+import PublicGamePage from './pages/public/PublicGamePage';
 import TeacherDashboardPage from './pages/dashboard/TeacherDashboardPage';
 import AIChatPage from './pages/dashboard/AIChatPage';
 import GroupsPage from './pages/dashboard/GroupsPage';
@@ -84,6 +88,10 @@ function App() {
                       <main className="flex-1">
                         <Routes>
                           <Route path="/landing" element={<LandingPage />} />
+                          <Route path="/library" element={<LibraryPage />} />
+                          <Route path="/library/lesson-plans/:id" element={<PublicLessonPlanPage />} />
+                          <Route path="/library/quizzes/:id" element={<PublicQuizPage />} />
+                          <Route path="/library/games/:id" element={<PublicGamePage />} />
                           <Route path="/login" element={<LoginPage />} />
                           <Route path="/register" element={<RegisterPage />} />
 

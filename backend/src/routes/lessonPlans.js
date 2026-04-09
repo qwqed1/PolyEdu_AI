@@ -15,6 +15,7 @@ router.post('/generate', lessonPlansController.generate);
 router.get('/', lessonPlansController.getAll);
 router.get('/subject/:subjectName/export-docx', lessonPlansController.exportSubjectDocx);
 router.get('/subject/:subjectName', lessonPlansController.getBySubject);
+router.patch('/:id/publish', lessonPlansController.publish);
 router.get('/:id/export-docx', lessonPlansController.exportDocx);
 router.get('/:id', lessonPlansController.getById);
 router.post('/', lessonPlansController.create);

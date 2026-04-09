@@ -6,9 +6,11 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  Copy,
   Download,
   FileText,
   Gamepad2,
+  Globe,
   Loader2,
   Sparkles,
   Trash2,
@@ -16,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import lessonPlanService from '../../services/lessonPlanService';
+import { getPublicResourceUrl } from '../../utils/publicLinks';
 
 const STAGES = [
   { key: 'stage_organization', title: 'Ұйымдастыру кезеңі (5 мин.)' },
@@ -143,6 +146,7 @@ export default function LessonPlanPage() {
   const [expandedPlan, setExpandedPlan] = useState(null);
   const [downloadingPlanId, setDownloadingPlanId] = useState(null);
   const [downloadingSubject, setDownloadingSubject] = useState('');
+  const [publishingPlanId, setPublishingPlanId] = useState(null);
   const [generationMode, setGenerationMode] = useState('semester');
   const [formData, setFormData] = useState({
     subject_name: '',
@@ -176,12 +180,6 @@ export default function LessonPlanPage() {
     try {
       setLoading(true);
       setError('');
-
-      try {
-        await lessonPlanService.initTable();
-      } catch (initErr) {
-        console.log('Table init:', initErr.message);
-      }
 
       const data = await lessonPlanService.getAll();
       setPlans(data || []);
@@ -278,8 +276,41 @@ export default function LessonPlanPage() {
     const prompt = buildGamePrompt(plan);
     const title = `Игра к уроку ${plan.lesson_number || ''}`;
     navigate(
-      `/interactive-games/ai-generator?prompt=${encodeURIComponent(prompt)}&title=${encodeURIComponent(title)}`,
+      `/interactive-games/ai-generator?prompt=${encodeURIComponent(prompt)}&title=${encodeURIComponent(title)}&lessonPlanId=${plan.id}`,
     );
+  };
+
+  const openQuizCreator = (plan) => {
+    const title = `Викторина к уроку ${plan.lesson_number || ''}: ${plan.topic || ''}`.trim();
+    const description = `Викторина по теме "${plan.topic || 'урока'}" для группы ${plan.group_name || ''}`.trim();
+    navigate(
+      `/interactive-games/create?lessonPlanId=${plan.id}&title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}`,
+    );
+  };
+
+  const togglePublic = async (plan) => {
+    try {
+      setPublishingPlanId(plan.id);
+      const response = await lessonPlanService.publish(plan.id, !plan.is_public);
+      const updatedPlan = response.data || response;
+      setPlans((current) => current.map((item) => (item.id === plan.id ? updatedPlan : item)));
+    } catch (err) {
+      console.error('Publish plan error:', err);
+      setError('Не удалось изменить статус публикации');
+    } finally {
+      setPublishingPlanId(null);
+    }
+  };
+
+  const copyPublicLink = async (planId) => {
+    try {
+      await navigator.clipboard.writeText(getPublicResourceUrl('lesson-plan', planId));
+      setError('');
+      alert('Публичная ссылка скопирована');
+    } catch (err) {
+      console.error('Copy plan link error:', err);
+      setError('Не удалось скопировать ссылку');
+    }
   };
 
   const groupedPlans = plans.reduce((acc, plan) => {
@@ -490,7 +521,19 @@ export default function LessonPlanPage() {
                             <span className="text-primary-600 font-bold">{plan.lesson_number}</span>
                           </div>
                           <div className="min-w-0">
-                            <h4 className="font-medium truncate">{plan.topic || 'Без темы'}</h4>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <h4 className="font-medium truncate">{plan.topic || 'Без темы'}</h4>
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold shrink-0 ${
+                                  plan.is_public
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
+                                    : 'bg-neutral-100 text-neutral-600 dark:bg-dark-bg dark:text-neutral-300'
+                                }`}
+                              >
+                                <Globe className="w-3 h-3" />
+                                {plan.is_public ? 'Опубликован' : 'Приватный'}
+                              </span>
+                            </div>
                             <p className="text-sm text-neutral-500">
                               {plan.lesson_type || 'Тип не указан'}
                               {' • '}
@@ -506,12 +549,55 @@ export default function LessonPlanPage() {
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation();
+                              openQuizCreator(plan);
+                            }}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 rounded-lg transition-colors"
+                          >
+                            <BookOpen className="w-4 h-4" />
+                            <span className="hidden sm:inline">Квиз</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
                               openGameGenerator(plan);
                             }}
                             className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-violet-600 bg-violet-50 hover:bg-violet-100 dark:text-violet-300 dark:bg-violet-900/20 dark:hover:bg-violet-900/40 rounded-lg transition-colors"
                           >
                             <Gamepad2 className="w-4 h-4" />
                             <span className="hidden sm:inline">Игра</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              togglePublic(plan);
+                            }}
+                            disabled={publishingPlanId === plan.id}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 rounded-lg transition-colors disabled:opacity-60"
+                          >
+                            {publishingPlanId === plan.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Globe className="w-4 h-4" />
+                            )}
+                            <span className="hidden sm:inline">
+                              {plan.is_public ? 'Снять' : 'Публикация'}
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              copyPublicLink(plan.id);
+                            }}
+                            disabled={!plan.is_public}
+                            className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-40"
+                          >
+                            <Copy className="w-4 h-4" />
                           </button>
 
                           <button

@@ -53,6 +53,12 @@ export default function Header() {
             <span className="text-xl font-bold gradient-text-primary">AIZERT</span>
           </Link>
 
+          <nav className="hidden md:flex items-center gap-5">
+            <Link to="/library" className="text-neutral-700 dark:text-neutral-300 hover:text-primary-600 dark:hover:text-primary-400 transition-default font-medium">
+              Библиотека
+            </Link>
+          </nav>
+
           {user && (
             <nav className="hidden lg:flex items-center gap-5">
               <Link to="/dashboard" className="text-neutral-700 dark:text-neutral-300 hover:text-primary-600 dark:hover:text-primary-400 transition-default font-medium">
@@ -199,6 +205,9 @@ export default function Header() {
           <div className="lg:hidden py-4 border-t border-neutral-200 dark:border-dark-border">
             {user ? (
               <div className="flex flex-col gap-3">
+                <Link to="/library" className="px-3 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-default">
+                  Библиотека
+                </Link>
                 <Link to="/dashboard" className="px-3 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-default">
                   {t.nav.home}
                 </Link>
@@ -245,11 +254,16 @@ export default function Header() {
                 </button>
               </div>
             ) : (
-              <Link to="/login">
-                <button className="w-full px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-default">
-                  {t.nav.login}
-                </button>
-              </Link>
+              <div className="flex flex-col gap-3">
+                <Link to="/library" className="px-3 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-default">
+                  Библиотека
+                </Link>
+                <Link to="/login">
+                  <button className="w-full px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-default">
+                    {t.nav.login}
+                  </button>
+                </Link>
+              </div>
             )}
           </div>
         )}

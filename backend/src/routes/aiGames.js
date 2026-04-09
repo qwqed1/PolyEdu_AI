@@ -9,6 +9,7 @@ router.use(authMiddleware, requireRole('teacher'));
 router.post('/generate', aiGameController.generate);
 router.post('/save', aiGameController.save);
 router.get('/', aiGameController.getAll);
+router.patch('/:id/publish', aiGameController.publish);
 router.get('/:id', aiGameController.getById);
 router.delete('/:id', aiGameController.delete);
 

@@ -29,10 +29,13 @@ class AIGameService {
   /**
    * Сохранить сгенерированную игру
    */
-  async save(title, prompt, htmlCode) {
+  async save(title, prompt, htmlCode, options = {}) {
     try {
       const response = await axios.post(`${API_URL}/save`, {
-        title, prompt, html_code: htmlCode
+        title,
+        prompt,
+        html_code: htmlCode,
+        source_lesson_plan_id: options.sourceLessonPlanId ?? null,
       }, {
         headers: this.getAuthHeaders()
       });
@@ -67,6 +70,21 @@ class AIGameService {
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.error || 'Ошибка при получении игры');
+    }
+  }
+
+  async publish(id, isPublic) {
+    try {
+      const response = await axios.patch(
+        `${API_URL}/${id}/publish`,
+        { is_public: isPublic },
+        {
+          headers: this.getAuthHeaders()
+        }
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Ошибка при изменении публикации игры');
     }
   }
 

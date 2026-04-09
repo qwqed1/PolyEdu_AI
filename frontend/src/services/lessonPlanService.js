@@ -100,6 +100,17 @@ class LessonPlanService {
     return response.data;
   }
 
+  async publish(id, isPublic) {
+    const response = await axios.patch(
+      `${API_URL}/${id}/publish`,
+      { is_public: isPublic },
+      {
+        headers: this.getAuthHeaders(),
+      },
+    );
+    return response.data;
+  }
+
   async delete(id) {
     const response = await axios.delete(`${API_URL}/${id}`, {
       headers: this.getAuthHeaders(),

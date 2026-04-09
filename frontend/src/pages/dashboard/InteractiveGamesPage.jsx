@@ -1,21 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Gamepad2,
-  Plus,
-  Trash2,
-  Edit,
-  HelpCircle,
-  Sparkles,
   BarChart3,
-  ListChecks,
-  Wand2,
   CheckCircle2,
+  Copy,
+  Edit,
+  Gamepad2,
+  Globe,
+  HelpCircle,
+  ListChecks,
+  Plus,
+  Sparkles,
+  Trash2,
+  Wand2,
 } from 'lucide-react';
 import quizService from '../../services/quizService';
+import { getPublicResourceUrl } from '../../utils/publicLinks';
 
 export default function InteractiveGamesPage() {
-  const [activeTab, setActiveTab] = useState('quizzes');
   const [quizzes, setQuizzes] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -44,12 +46,35 @@ export default function InteractiveGamesPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Вы уверены, что хотите удалить этот квиз?')) return;
+    if (!confirm('Удалить этот квиз?')) {
+      return;
+    }
+
     try {
       await quizService.deleteQuiz(id);
       loadData();
     } catch (err) {
       console.error('Error deleting quiz:', err);
+    }
+  };
+
+  const handleTogglePublic = async (quiz) => {
+    try {
+      await quizService.publishQuiz(quiz.id, !quiz.is_public);
+      loadData();
+    } catch (err) {
+      console.error('Error updating quiz publish status:', err);
+      alert('Не удалось изменить статус публикации');
+    }
+  };
+
+  const handleCopyLink = async (quizId) => {
+    try {
+      await navigator.clipboard.writeText(getPublicResourceUrl('quiz', quizId));
+      alert('Публичная ссылка скопирована');
+    } catch (err) {
+      console.error('Error copying quiz link:', err);
+      alert('Не удалось скопировать ссылку');
     }
   };
 
@@ -75,20 +100,13 @@ export default function InteractiveGamesPage() {
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
-          <button
-            onClick={() => setActiveTab('quizzes')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'quizzes'
-                ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
+          <div className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 shadow-sm">
             <ListChecks className="w-5 h-5" />
             <div className="text-left">
               <div>Викторины</div>
               <div className="text-xs opacity-70">{quizzes.length} создано</div>
             </div>
-          </button>
+          </div>
 
           <button
             onClick={() => navigate('/interactive-games/ai-generator')}
@@ -122,7 +140,7 @@ export default function InteractiveGamesPage() {
                 Интерактивные игры
               </h1>
               <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-                Собирайте учебные викторины, редактируйте вопросы и храните результаты в одном месте.
+                Создавайте учебные викторины, публикуйте их и храните статистику в одном месте.
               </p>
             </div>
             <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
@@ -145,39 +163,9 @@ export default function InteractiveGamesPage() {
 
           {stats && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-              <div className="card flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                  <Gamepad2 className="w-6 h-6 text-primary-500" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-neutral-900 dark:text-white">
-                    {stats.total_quizzes || 0}
-                  </p>
-                  <p className="text-sm text-neutral-500">Всего игр</p>
-                </div>
-              </div>
-              <div className="card flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                  <CheckCircle2 className="w-6 h-6 text-green-500" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-neutral-900 dark:text-white">
-                    {readyQuizzes}
-                  </p>
-                  <p className="text-sm text-neutral-500">Готовых</p>
-                </div>
-              </div>
-              <div className="card flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                  <HelpCircle className="w-6 h-6 text-blue-500" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-neutral-900 dark:text-white">
-                    {stats.total_questions || 0}
-                  </p>
-                  <p className="text-sm text-neutral-500">Вопросов</p>
-                </div>
-              </div>
+              <StatCard icon={Gamepad2} color="text-primary-500" value={stats.total_quizzes || 0} label="Всего игр" />
+              <StatCard icon={CheckCircle2} color="text-green-500" value={readyQuizzes} label="Готовых" />
+              <StatCard icon={HelpCircle} color="text-blue-500" value={stats.total_questions || 0} label="Вопросов" />
             </div>
           )}
 
@@ -220,14 +208,28 @@ export default function InteractiveGamesPage() {
                   key={quiz.id}
                   className="card hover:shadow-lg transition-shadow duration-200 overflow-hidden"
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      quiz.type === 'kahoot'
-                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                    }`}>
+                  <div className="flex items-center justify-between mb-4 gap-3">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        quiz.type === 'kahoot'
+                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                      }`}
+                    >
                       {quiz.type === 'kahoot' ? 'Kahoot стиль' : 'Quizizz стиль'}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePublic(quiz)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                        quiz.is_public
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                          : 'bg-neutral-100 text-neutral-600 dark:bg-dark-bg dark:text-neutral-300'
+                      }`}
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      {quiz.is_public ? 'Опубликован' : 'Приватный'}
+                    </button>
                   </div>
 
                   <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2 line-clamp-2">
@@ -248,6 +250,15 @@ export default function InteractiveGamesPage() {
 
                   <div className="flex items-center justify-between pt-4 border-t border-neutral-200 dark:border-dark-border">
                     <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyLink(quiz.id)}
+                        disabled={!quiz.is_public}
+                        className="p-2 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-40"
+                        title="Скопировать публичную ссылку"
+                      >
+                        <Copy className="w-5 h-5" />
+                      </button>
                       <Link
                         to={`/interactive-games/${quiz.id}/results`}
                         className="p-2 text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
@@ -279,6 +290,20 @@ export default function InteractiveGamesPage() {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ icon: Icon, color, value, label }) {
+  return (
+    <div className="card flex items-center gap-4">
+      <div className="w-12 h-12 rounded-xl bg-neutral-100 dark:bg-dark-bg flex items-center justify-center">
+        <Icon className={`w-6 h-6 ${color}`} />
+      </div>
+      <div>
+        <p className="text-2xl font-bold text-neutral-900 dark:text-white">{value}</p>
+        <p className="text-sm text-neutral-500">{label}</p>
       </div>
     </div>
   );

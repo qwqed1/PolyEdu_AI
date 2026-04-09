@@ -8,11 +8,11 @@ function sendDocx(res, file) {
 
   res.setHeader(
     'Content-Type',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   );
   res.setHeader(
     'Content-Disposition',
-    `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodeURIComponent(safeName)}`,
+    `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodeURIComponent(safeName)}`
   );
 
   res.send(file.buffer);
@@ -28,34 +28,31 @@ export const lessonPlansController = {
 
       const totalMatch = prompt.match(/(\d+)\s*планов/i);
       const totalLessons = totalMatch ? parseInt(totalMatch[1], 10) : 18;
-      const BATCH_SIZE = 6;
-      const batches = Math.ceil(totalLessons / BATCH_SIZE);
+      const batchSize = 6;
+      const batches = Math.ceil(totalLessons / batchSize);
       const allPlans = [];
 
-      console.log(`[LessonPlans] Генерация ${totalLessons} планов (${batches} батчей по ${BATCH_SIZE})`);
-
       for (let batch = 0; batch < batches; batch += 1) {
-        const from = batch * BATCH_SIZE + 1;
-        const to = Math.min((batch + 1) * BATCH_SIZE, totalLessons);
+        const from = batch * batchSize + 1;
+        const to = Math.min((batch + 1) * batchSize, totalLessons);
         const prevTopics = allPlans.map((plan) => `${plan.lesson_number}. ${plan.topic}`).join('\n');
         const contextNote = prevTopics
           ? `\n\nУже сгенерированные темы (не повторяй, продолжай логически):\n${prevTopics}`
           : '';
 
-        const batchPrompt = prompt
-          .replace(/\d+\s*планов/i, `${to - from + 1} планов (уроки с ${from} по ${to})`)
-          + contextNote
-          + `\n\nНумерация уроков: с ${from} по ${to}. Ответь только JSON массивом.`;
+        const batchPrompt =
+          prompt.replace(/\d+\s*планов/i, `${to - from + 1} планов (уроки с ${from} по ${to})`) +
+          contextNote +
+          `\n\nНумерация уроков: с ${from} по ${to}. Ответь только JSON массивом.`;
 
         const messages = [
           {
             role: 'system',
-            content: 'Ты AI-помощник для планов уроков. Отвечай только JSON массивом. Без markdown и пояснений.',
+            content:
+              'Ты AI-помощник для планов уроков. Отвечай только JSON массивом. Без markdown и пояснений.',
           },
           { role: 'user', content: batchPrompt },
         ];
-
-        console.log(`[LessonPlans] Батч ${batch + 1}/${batches}: уроки ${from}-${to}`);
 
         const completion = await openRouterService.chatLesson(messages);
         let text = openRouterService.extractText(completion);
@@ -66,44 +63,26 @@ export const lessonPlansController = {
         let plans = [];
         try {
           plans = JSON.parse(text);
-        } catch {}
-
-        if (!Array.isArray(plans) || plans.length === 0) {
+        } catch {
           const start = text.indexOf('[');
           const end = text.lastIndexOf(']');
           if (start !== -1 && end > start) {
             try {
               plans = JSON.parse(text.substring(start, end + 1));
-            } catch {}
-          }
-        }
-
-        if (!Array.isArray(plans) || plans.length === 0) {
-          const start = text.indexOf('[');
-          if (start !== -1) {
-            const trimmed = text.substring(start);
-            const lastObject = trimmed.lastIndexOf('}');
-            if (lastObject > 0) {
-              try {
-                plans = JSON.parse(`${trimmed.substring(0, lastObject + 1)}]`);
-              } catch {}
+            } catch {
+              plans = [];
             }
           }
         }
 
-        if (Array.isArray(plans) && plans.length > 0) {
-          plans.forEach((plan, index) => {
-            plan.lesson_number = from + index;
-          });
-          allPlans.push(...plans);
-          console.log(`[LessonPlans] Батч ${batch + 1}: ${plans.length} планов (всего: ${allPlans.length})`);
-        } else {
-          console.warn(`[LessonPlans] Батч ${batch + 1}: не удалось распарсить`);
+        if (!Array.isArray(plans) || plans.length === 0) {
+          return res.status(422).json({ error: 'AI не вернул данные в нужном формате' });
         }
-      }
 
-      if (allPlans.length === 0) {
-        return res.status(422).json({ error: 'AI не вернул данные в нужном формате' });
+        plans.forEach((plan, index) => {
+          plan.lesson_number = from + index;
+        });
+        allPlans.push(...plans);
       }
 
       res.json({ success: true, plans: allPlans });
@@ -116,17 +95,16 @@ export const lessonPlansController = {
   async initTable(req, res) {
     try {
       await LessonPlanModel.initTable();
-      res.json({ success: true, message: 'Таблица lesson_plans создана' });
+      res.json({ success: true, message: 'lesson_plans initialized' });
     } catch (error) {
-      console.error('Init table error:', error);
-      res.status(500).json({ error: 'Ошибка инициализации таблицы' });
+      console.error('Init lesson plans error:', error);
+      res.status(500).json({ error: 'Ошибка инициализации таблицы lesson_plans' });
     }
   },
 
   async getAll(req, res) {
     try {
-      const userId = req.user.id;
-      const plans = await LessonPlanModel.getAllByUserId(userId);
+      const plans = await LessonPlanModel.getAllByUserId(req.user.id);
       res.json(plans);
     } catch (error) {
       console.error('Get all plans error:', error);
@@ -136,9 +114,10 @@ export const lessonPlansController = {
 
   async getBySubject(req, res) {
     try {
-      const userId = req.user.id;
-      const { subjectName } = req.params;
-      const plans = await LessonPlanModel.getBySubject(userId, decodeURIComponent(subjectName));
+      const plans = await LessonPlanModel.getBySubject(
+        req.user.id,
+        decodeURIComponent(req.params.subjectName)
+      );
       res.json(plans);
     } catch (error) {
       console.error('Get plans by subject error:', error);
@@ -148,9 +127,7 @@ export const lessonPlansController = {
 
   async getById(req, res) {
     try {
-      const userId = req.user.id;
-      const { id } = req.params;
-      const plan = await LessonPlanModel.getById(id, userId);
+      const plan = await LessonPlanModel.getById(req.params.id, req.user.id);
 
       if (!plan) {
         return res.status(404).json({ error: 'План не найден' });
@@ -165,9 +142,7 @@ export const lessonPlansController = {
 
   async exportDocx(req, res) {
     try {
-      const userId = req.user.id;
-      const { id } = req.params;
-      const plan = await LessonPlanModel.getById(id, userId);
+      const plan = await LessonPlanModel.getById(req.params.id, req.user.id);
 
       if (!plan) {
         return res.status(404).json({ error: 'План не найден' });
@@ -183,9 +158,10 @@ export const lessonPlansController = {
 
   async exportSubjectDocx(req, res) {
     try {
-      const userId = req.user.id;
-      const { subjectName } = req.params;
-      const plans = await LessonPlanModel.getBySubject(userId, decodeURIComponent(subjectName));
+      const plans = await LessonPlanModel.getBySubject(
+        req.user.id,
+        decodeURIComponent(req.params.subjectName)
+      );
 
       if (!plans.length) {
         return res.status(404).json({ error: 'Планы не найдены' });
@@ -201,8 +177,7 @@ export const lessonPlansController = {
 
   async create(req, res) {
     try {
-      const userId = req.user.id;
-      const plan = await LessonPlanModel.create(req.body, userId);
+      const plan = await LessonPlanModel.create(req.body, req.user.id);
       res.status(201).json(plan);
     } catch (error) {
       console.error('Create plan error:', error);
@@ -212,14 +187,13 @@ export const lessonPlansController = {
 
   async createMany(req, res) {
     try {
-      const userId = req.user.id;
       const { plans } = req.body;
 
       if (!plans || !Array.isArray(plans)) {
         return res.status(400).json({ error: 'Передайте массив plans' });
       }
 
-      const results = await LessonPlanModel.createMany(plans, userId);
+      const results = await LessonPlanModel.createMany(plans, req.user.id);
       res.status(201).json({ success: true, created: results.length, plans: results });
     } catch (error) {
       console.error('Create many plans error:', error);
@@ -229,9 +203,7 @@ export const lessonPlansController = {
 
   async update(req, res) {
     try {
-      const userId = req.user.id;
-      const { id } = req.params;
-      const plan = await LessonPlanModel.update(id, req.body, userId);
+      const plan = await LessonPlanModel.update(req.params.id, req.body, req.user.id);
 
       if (!plan) {
         return res.status(404).json({ error: 'План не найден' });
@@ -244,11 +216,25 @@ export const lessonPlansController = {
     }
   },
 
+  async publish(req, res) {
+    try {
+      const isPublic = Boolean(req.body?.is_public);
+      const plan = await LessonPlanModel.publish(req.params.id, req.user.id, isPublic);
+
+      if (!plan) {
+        return res.status(404).json({ error: 'План не найден' });
+      }
+
+      res.json({ success: true, data: plan });
+    } catch (error) {
+      console.error('Publish plan error:', error);
+      res.status(500).json({ error: 'Ошибка изменения статуса публикации' });
+    }
+  },
+
   async delete(req, res) {
     try {
-      const userId = req.user.id;
-      const { id } = req.params;
-      const result = await LessonPlanModel.delete(id, userId);
+      const result = await LessonPlanModel.delete(req.params.id, req.user.id);
 
       if (!result) {
         return res.status(404).json({ error: 'План не найден' });
@@ -263,9 +249,10 @@ export const lessonPlansController = {
 
   async deleteBySubject(req, res) {
     try {
-      const userId = req.user.id;
-      const { subjectName } = req.params;
-      const results = await LessonPlanModel.deleteBySubject(decodeURIComponent(subjectName), userId);
+      const results = await LessonPlanModel.deleteBySubject(
+        decodeURIComponent(req.params.subjectName),
+        req.user.id
+      );
       res.json({ success: true, deleted: results.length });
     } catch (error) {
       console.error('Delete plans by subject error:', error);

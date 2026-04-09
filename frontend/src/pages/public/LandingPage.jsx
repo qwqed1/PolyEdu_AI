@@ -160,6 +160,11 @@ export default function LandingPage() {
                   {copy.secondaryCta}
                 </button>
               </Link>
+              <Link to="/library" className="w-full sm:w-auto">
+                <button className="w-full px-8 py-4 bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 rounded-xl font-bold text-lg transition-all duration-200">
+                  Библиотека
+                </button>
+              </Link>
             </div>
           </div>
         </div>

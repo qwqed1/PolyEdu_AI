@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Save, Sparkles, Plus, Trash2, GripVertical,
   Image, Clock, Shuffle, Eye, Award, Loader2, CheckCircle2
@@ -11,6 +11,7 @@ export default function CreateQuizPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = Boolean(id);
+  const [searchParams] = useSearchParams();
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -22,6 +23,7 @@ export default function CreateQuizPage() {
     description: '',
     type: 'kahoot',
     subject_id: '',
+    source_lesson_plan_id: '',
     questions: [],
     settings: {
       timePerQuestion: 30,
@@ -44,6 +46,27 @@ export default function CreateQuizPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (isEditing) {
+      return;
+    }
+
+    const lessonPlanId = searchParams.get('lessonPlanId');
+    const presetTitle = searchParams.get('title');
+    const presetDescription = searchParams.get('description');
+
+    if (!lessonPlanId && !presetTitle && !presetDescription) {
+      return;
+    }
+
+    setQuiz((prev) => ({
+      ...prev,
+      source_lesson_plan_id: lessonPlanId || prev.source_lesson_plan_id,
+      title: presetTitle || prev.title,
+      description: presetDescription || prev.description,
+    }));
+  }, [isEditing, searchParams]);
 
   const loadSubjects = async () => {
     try {

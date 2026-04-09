@@ -1,11 +1,13 @@
-﻿import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Bot,
+  Copy,
   Download,
   Eye,
   FolderOpen,
   Gamepad2,
+  Globe,
   ListChecks,
   Loader2,
   Save,
@@ -16,12 +18,13 @@ import {
   X,
 } from 'lucide-react';
 import aiGameService from '../../services/aiGameService';
+import { getPublicResourceUrl } from '../../utils/publicLinks';
 
 const initialMessage = {
   id: 1,
   type: 'ai',
   content:
-    'Привет! Я помогу тебе создать интерактивную игру. Опиши, какую игру ты хочешь, и я сгенерирую её для тебя!\n\nНапример:\n• "Создай игру на знание столиц мира"\n• "Сделай математическую игру на скорость"\n• "Игра-викторина по истории Казахстана"\n• "Змейка с образовательными вопросами"',
+    'Привет! Я помогу создать интерактивную игру. Опиши механику, тему или формат, и я сгенерирую готовый HTML.',
   timestamp: new Date(),
 };
 
@@ -36,7 +39,9 @@ export default function GameGeneratorPage() {
   const [loadingGame, setLoadingGame] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveTitle, setSaveTitle] = useState('');
+  const [saveIsPublic, setSaveIsPublic] = useState(false);
   const [searchParams] = useSearchParams();
+  const [sourceLessonPlanId, setSourceLessonPlanId] = useState('');
 
   useEffect(() => {
     loadSavedGames();
@@ -45,6 +50,7 @@ export default function GameGeneratorPage() {
   useEffect(() => {
     const presetPrompt = searchParams.get('prompt');
     const presetTitle = searchParams.get('title');
+    const lessonPlanId = searchParams.get('lessonPlanId');
 
     if (!presetPrompt) {
       return;
@@ -52,12 +58,13 @@ export default function GameGeneratorPage() {
 
     setInputMessage(presetPrompt);
     setCurrentPrompt(presetPrompt);
+    setSourceLessonPlanId(lessonPlanId || '');
 
     if (presetTitle) {
       setSaveTitle(presetTitle);
     }
 
-    const infoText = 'Промпт из плана урока уже подставлен. Если нужно, отредактируй его и нажми отправить.';
+    const infoText = 'Промпт из плана урока уже подставлен. При необходимости отредактируй его и нажми отправить.';
     setMessages((prev) => {
       if (prev.some((item) => item.content === infoText)) {
         return prev;
@@ -106,7 +113,7 @@ export default function GameGeneratorPage() {
       {
         id: Date.now() + 1,
         type: 'ai',
-        content: 'Генерирую игру... Это может занять до 1-2 минут.',
+        content: 'Генерирую игру... Это может занять 1-2 минуты.',
         timestamp: new Date(),
         isLoading: true,
       },
@@ -120,14 +127,13 @@ export default function GameGeneratorPage() {
 
         if (result.success && result.data?.html_code) {
           setGeneratedHtml(result.data.html_code);
-
           return [
             ...withoutLoading,
             {
               id: Date.now() + 2,
               type: 'ai',
               content:
-                'Игра готова. Если нужно, сохрани ее в библиотеку или попроси меня изменить механику, тему, сложность или дизайн.',
+                'Игра готова. Можно сохранить её в библиотеку, опубликовать или попросить изменить механику.',
               timestamp: new Date(),
             },
           ];
@@ -164,9 +170,17 @@ export default function GameGeneratorPage() {
     }
 
     try {
-      await aiGameService.save(saveTitle.trim(), currentPrompt, generatedHtml);
+      const response = await aiGameService.save(saveTitle.trim(), currentPrompt, generatedHtml, {
+        sourceLessonPlanId: sourceLessonPlanId || null,
+      });
+
+      if (saveIsPublic && response.data?.id) {
+        await aiGameService.publish(response.data.id, true);
+      }
+
       setShowSaveModal(false);
       setSaveTitle('');
+      setSaveIsPublic(false);
       await loadSavedGames();
     } catch (error) {
       alert(error.message);
@@ -181,6 +195,7 @@ export default function GameGeneratorPage() {
       if (response.data) {
         setGeneratedHtml(response.data.html_code || '');
         setCurrentPrompt(response.data.prompt || '');
+        setSourceLessonPlanId(response.data.source_lesson_plan_id || '');
         setMessages((prev) => [
           ...prev,
           {
@@ -209,6 +224,25 @@ export default function GameGeneratorPage() {
       await loadSavedGames();
     } catch (error) {
       alert(error.message);
+    }
+  };
+
+  const handleTogglePublic = async (game) => {
+    try {
+      await aiGameService.publish(game.id, !game.is_public);
+      await loadSavedGames();
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  const handleCopyLink = async (gameId) => {
+    try {
+      await navigator.clipboard.writeText(getPublicResourceUrl('game', gameId));
+      alert('Публичная ссылка скопирована');
+    } catch (error) {
+      console.error(error);
+      alert('Не удалось скопировать ссылку');
     }
   };
 
@@ -266,8 +300,12 @@ export default function GameGeneratorPage() {
               <Wand2 className="w-6 h-6 text-white" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-3xl font-black tracking-tight text-neutral-900 dark:text-white truncate">AI Генератор Игр</h1>
-              <p className="text-sm text-neutral-500 truncate">Опиши игру и получи интерактивный HTML-сценарий</p>
+              <h1 className="text-3xl font-black tracking-tight text-neutral-900 dark:text-white truncate">
+                AI Генератор Игр
+              </h1>
+              <p className="text-sm text-neutral-500 truncate">
+                Опиши игру и получи интерактивный HTML-сценарий
+              </p>
             </div>
           </div>
 
@@ -284,10 +322,17 @@ export default function GameGeneratorPage() {
         <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-6">
           <div className="max-w-3xl mx-auto space-y-4">
             {messages.map((message) => (
-              <article key={message.id} className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <article
+                key={message.id}
+                className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
                 {message.type !== 'user' && (
                   <div className="w-10 h-10 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 flex items-center justify-center shrink-0 mt-1">
-                    {message.isLoading ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Bot className="w-5 h-5 text-white" />}
+                    {message.isLoading ? (
+                      <Loader2 className="w-5 h-5 text-white animate-spin" />
+                    ) : (
+                      <Bot className="w-5 h-5 text-white" />
+                    )}
                   </div>
                 )}
 
@@ -297,8 +342,8 @@ export default function GameGeneratorPage() {
                       message.type === 'user'
                         ? 'bg-primary-600 text-white border-primary-600'
                         : message.type === 'error'
-                        ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
-                        : 'bg-white text-neutral-900 border-neutral-200 dark:bg-gray-800 dark:text-neutral-100 dark:border-gray-700'
+                          ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
+                          : 'bg-white text-neutral-900 border-neutral-200 dark:bg-gray-800 dark:text-neutral-100 dark:border-gray-700'
                     }`}
                   >
                     {message.content}
@@ -318,7 +363,9 @@ export default function GameGeneratorPage() {
 
             {generatedHtml && (
               <div className="max-w-[85%] bg-white dark:bg-gray-800 border border-neutral-200 dark:border-gray-700 rounded-2xl px-5 py-4">
-                <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-3">Игра сгенерирована. Можно сохранить или скачать HTML.</p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-3">
+                  Игра сгенерирована. Можно сохранить её в библиотеку или скачать HTML.
+                </p>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -367,22 +414,48 @@ export default function GameGeneratorPage() {
         <aside className="absolute right-0 top-0 bottom-0 w-full sm:w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-2xl z-40 flex flex-col">
           <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Мои игры</h3>
-            <button type="button" onClick={() => setShowSavedList(false)} className="text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200">
+            <button
+              type="button"
+              onClick={() => setShowSavedList(false)}
+              className="text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {savedGames.length === 0 ? (
-              <div className="h-full min-h-48 flex items-center justify-center text-sm text-neutral-500">Сохраненных игр пока нет</div>
+              <div className="h-full min-h-48 flex items-center justify-center text-sm text-neutral-500">
+                Сохраненных игр пока нет
+              </div>
             ) : (
               savedGames.map((game) => (
-                <article key={game.id} className="rounded-xl border border-neutral-200 dark:border-gray-700 bg-neutral-50 dark:bg-gray-700/40 p-3">
-                  <h4 className="font-semibold text-neutral-900 dark:text-white truncate">{game.title}</h4>
-                  <p className="text-xs text-neutral-500 mt-1 truncate">{game.prompt}</p>
-                  <p className="text-xs text-neutral-400 mt-2">{new Date(game.created_at).toLocaleDateString('ru-RU')}</p>
+                <article
+                  key={game.id}
+                  className="rounded-xl border border-neutral-200 dark:border-gray-700 bg-neutral-50 dark:bg-gray-700/40 p-3"
+                >
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <h4 className="font-semibold text-neutral-900 dark:text-white truncate">{game.title}</h4>
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePublic(game)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold ${
+                        game.is_public
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                          : 'bg-neutral-200 text-neutral-700 dark:bg-gray-800 dark:text-neutral-300'
+                      }`}
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      {game.is_public ? 'Опубликован' : 'Приватный'}
+                    </button>
+                  </div>
 
-                  <div className="flex items-center gap-2 mt-3">
+                  <p className="text-xs text-neutral-500 mt-1 line-clamp-2">{game.prompt}</p>
+                  <p className="text-xs text-neutral-400 mt-2">
+                    {new Date(game.created_at).toLocaleDateString('ru-RU')}
+                  </p>
+
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
                     <button
                       type="button"
                       disabled={loadingGame}
@@ -391,6 +464,15 @@ export default function GameGeneratorPage() {
                     >
                       <Eye className="w-3.5 h-3.5" />
                       Открыть
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!game.is_public}
+                      onClick={() => handleCopyLink(game.id)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-medium hover:bg-emerald-200 dark:hover:bg-emerald-900/50 disabled:opacity-40"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      Ссылка
                     </button>
                     <button
                       type="button"
@@ -426,6 +508,19 @@ export default function GameGeneratorPage() {
               className="w-full h-11 rounded-lg border border-neutral-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 text-neutral-900 dark:text-white mb-4 focus:outline-none focus:ring-2 focus:ring-violet-500"
               autoFocus
             />
+
+            <label className="flex items-center gap-3 mb-5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={saveIsPublic}
+                onChange={(event) => setSaveIsPublic(event.target.checked)}
+                className="w-4 h-4 rounded"
+              />
+              <span className="text-sm text-neutral-700 dark:text-neutral-300">
+                Сразу опубликовать игру в библиотеке
+              </span>
+            </label>
+
             <div className="flex gap-2">
               <button
                 type="button"

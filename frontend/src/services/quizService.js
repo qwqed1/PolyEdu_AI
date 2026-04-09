@@ -33,6 +33,15 @@ const quizService = {
     return response.data;
   },
 
+  async publishQuiz(id, isPublic) {
+    const response = await axios.patch(
+      `${API_URL}/quiz/${id}/publish`,
+      { is_public: isPublic },
+      getAuthHeaders()
+    );
+    return response.data;
+  },
+
   async deleteQuiz(id) {
     const response = await axios.delete(`${API_URL}/quiz/${id}`, getAuthHeaders());
     return response.data;

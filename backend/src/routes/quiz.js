@@ -5,6 +5,7 @@ import {
   getQuizById,
   createQuiz,
   updateQuiz,
+  publishQuiz,
   deleteQuiz,
   generateQuestions,
   getQuizStats,
@@ -25,6 +26,7 @@ router.get('/:id/results', getQuizResults);
 router.delete('/:id/results', clearQuizResults);
 router.post('/', createQuiz);
 router.put('/:id', updateQuiz);
+router.patch('/:id/publish', publishQuiz);
 router.delete('/:id', deleteQuiz);
 router.post('/generate', generateQuestions);
 

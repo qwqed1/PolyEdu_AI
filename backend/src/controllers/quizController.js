@@ -3,162 +3,134 @@ import aiService from '../services/aiService.js';
 
 export const getQuizzes = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const quizzes = await QuizModel.getAllByUserId(userId);
-    res.json({
-      success: true,
-      data: quizzes,
-    });
+    const quizzes = await QuizModel.getAllByUserId(req.user.id);
+    res.json({ success: true, data: quizzes });
   } catch (error) {
     console.error('Error getting quizzes:', error);
-    res.status(500).json({
-      success: false,
-      error: 'РћС€РёР±РєР° РїСЂРё РїРѕР»СѓС‡РµРЅРёРё СЃРїРёСЃРєР° РєРІРёР·РѕРІ',
-    });
+    res.status(500).json({ success: false, error: 'Ошибка при получении списка квизов' });
   }
 };
 
 export const getQuizById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const userId = req.user.id;
-    const quiz = await QuizModel.getById(id, userId);
+    const quiz = await QuizModel.getById(req.params.id, req.user.id);
 
     if (!quiz) {
-      return res.status(404).json({
-        success: false,
-        error: 'РљРІРёР· РЅРµ РЅР°Р№РґРµРЅ',
-      });
+      return res.status(404).json({ success: false, error: 'Квиз не найден' });
     }
 
-    res.json({
-      success: true,
-      data: quiz,
-    });
+    res.json({ success: true, data: quiz });
   } catch (error) {
     console.error('Error getting quiz:', error);
-    res.status(500).json({
-      success: false,
-      error: 'РћС€РёР±РєР° РїСЂРё РїРѕР»СѓС‡РµРЅРёРё РєРІРёР·Р°',
-    });
+    res.status(500).json({ success: false, error: 'Ошибка при получении квиза' });
   }
 };
 
 export const createQuiz = async (req, res) => {
   try {
-    const userId = req.user.id;
     const quizData = req.body;
 
     if (!quizData.title) {
-      return res.status(400).json({
-        success: false,
-        error: 'РќР°Р·РІР°РЅРёРµ РєРІРёР·Р° РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ',
-      });
+      return res.status(400).json({ success: false, error: 'Название квиза обязательно' });
     }
 
-    const quiz = await QuizModel.create(quizData, userId);
+    const quiz = await QuizModel.create(quizData, req.user.id);
     res.status(201).json({
       success: true,
       data: quiz,
-      message: 'РљРІРёР· СѓСЃРїРµС€РЅРѕ СЃРѕР·РґР°РЅ',
+      message: 'Квиз успешно создан',
     });
   } catch (error) {
     console.error('Error creating quiz:', error);
-    res.status(500).json({
-      success: false,
-      error: 'РћС€РёР±РєР° РїСЂРё СЃРѕР·РґР°РЅРёРё РєРІРёР·Р°',
-    });
+    res.status(500).json({ success: false, error: 'Ошибка при создании квиза' });
   }
 };
 
 export const updateQuiz = async (req, res) => {
   try {
-    const { id } = req.params;
-    const userId = req.user.id;
-    const quizData = req.body;
-
-    const quiz = await QuizModel.update(id, quizData, userId);
+    const quiz = await QuizModel.update(req.params.id, req.body, req.user.id);
 
     if (!quiz) {
-      return res.status(404).json({
-        success: false,
-        error: 'РљРІРёР· РЅРµ РЅР°Р№РґРµРЅ',
-      });
+      return res.status(404).json({ success: false, error: 'Квиз не найден' });
     }
 
     res.json({
       success: true,
       data: quiz,
-      message: 'РљРІРёР· СѓСЃРїРµС€РЅРѕ РѕР±РЅРѕРІР»С‘РЅ',
+      message: 'Квиз успешно обновлён',
     });
   } catch (error) {
     console.error('Error updating quiz:', error);
-    res.status(500).json({
-      success: false,
-      error: 'РћС€РёР±РєР° РїСЂРё РѕР±РЅРѕРІР»РµРЅРёРё РєРІРёР·Р°',
-    });
+    res.status(500).json({ success: false, error: 'Ошибка при обновлении квиза' });
+  }
+};
+
+export const publishQuiz = async (req, res) => {
+  try {
+    const quiz = await QuizModel.publish(req.params.id, req.user.id, Boolean(req.body?.is_public));
+
+    if (!quiz) {
+      return res.status(404).json({ success: false, error: 'Квиз не найден' });
+    }
+
+    res.json({ success: true, data: quiz });
+  } catch (error) {
+    console.error('Error publishing quiz:', error);
+    res.status(500).json({ success: false, error: 'Ошибка при изменении публикации квиза' });
   }
 };
 
 export const deleteQuiz = async (req, res) => {
   try {
-    const { id } = req.params;
-    const userId = req.user.id;
-
-    const deleted = await QuizModel.delete(id, userId);
+    const deleted = await QuizModel.delete(req.params.id, req.user.id);
 
     if (!deleted) {
-      return res.status(404).json({
-        success: false,
-        error: 'РљРІРёР· РЅРµ РЅР°Р№РґРµРЅ',
-      });
+      return res.status(404).json({ success: false, error: 'Квиз не найден' });
     }
 
-    res.json({
-      success: true,
-      message: 'РљРІРёР· СѓСЃРїРµС€РЅРѕ СѓРґР°Р»С‘РЅ',
-    });
+    res.json({ success: true, message: 'Квиз успешно удалён' });
   } catch (error) {
     console.error('Error deleting quiz:', error);
-    res.status(500).json({
-      success: false,
-      error: 'РћС€РёР±РєР° РїСЂРё СѓРґР°Р»РµРЅРёРё РєРІРёР·Р°',
-    });
+    res.status(500).json({ success: false, error: 'Ошибка при удалении квиза' });
   }
 };
 
 export const generateQuestions = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { topic, questionsCount = 5, difficulty = 'medium', type = 'multiple_choice' } = req.body;
+    const {
+      topic,
+      questionsCount = 5,
+      difficulty = 'medium',
+      type = 'multiple_choice',
+    } = req.body;
 
     if (!topic) {
-      return res.status(400).json({
-        success: false,
-        error: 'РўРµРјР° РѕР±СЏР·Р°С‚РµР»СЊРЅР° РґР»СЏ РіРµРЅРµСЂР°С†РёРё РІРѕРїСЂРѕСЃРѕРІ',
-      });
+      return res
+        .status(400)
+        .json({ success: false, error: 'Тема обязательна для генерации вопросов' });
     }
 
-    const prompt = `РЎРіРµРЅРµСЂРёСЂСѓР№ ${questionsCount} РІРѕРїСЂРѕСЃРѕРІ РґР»СЏ РёРЅС‚РµСЂР°РєС‚РёРІРЅРѕРіРѕ С‚РµСЃС‚Р° РЅР° С‚РµРјСѓ "${topic}".
+    const prompt = `Сгенерируй ${questionsCount} вопросов для интерактивного теста на тему "${topic}".
 
-РўСЂРµР±РѕРІР°РЅРёСЏ:
-- РЈСЂРѕРІРµРЅСЊ СЃР»РѕР¶РЅРѕСЃС‚Рё: ${difficulty === 'easy' ? 'Р»С‘РіРєРёР№' : difficulty === 'medium' ? 'СЃСЂРµРґРЅРёР№' : 'СЃР»РѕР¶РЅС‹Р№'}
-- РўРёРї РІРѕРїСЂРѕСЃРѕРІ: ${type === 'multiple_choice' ? 'СЃ РІР°СЂРёР°РЅС‚Р°РјРё РѕС‚РІРµС‚РѕРІ (4 РІР°СЂРёР°РЅС‚Р°, 1 РїСЂР°РІРёР»СЊРЅС‹Р№)' : 'true/false'}
-- Р¤РѕСЂРјР°С‚ РѕС‚РІРµС‚Р°: JSON РјР°СЃСЃРёРІ
+Требования:
+- Уровень сложности: ${difficulty === 'easy' ? 'лёгкий' : difficulty === 'medium' ? 'средний' : 'сложный'}
+- Тип вопросов: ${type === 'multiple_choice' ? 'с вариантами ответа (4 варианта, 1 правильный)' : 'true/false'}
+- Формат ответа: JSON массив
 
-РљР°Р¶РґС‹Р№ РІРѕРїСЂРѕСЃ РґРѕР»Р¶РµРЅ РёРјРµС‚СЊ СЃС‚СЂСѓРєС‚СѓСЂСѓ:
+Каждый вопрос должен иметь структуру:
 {
-  "question": "РўРµРєСЃС‚ РІРѕРїСЂРѕСЃР°",
+  "question": "Текст вопроса",
   "answers": [
-    {"text": "РћС‚РІРµС‚ 1", "isCorrect": true},
-    {"text": "РћС‚РІРµС‚ 2", "isCorrect": false},
-    {"text": "РћС‚РІРµС‚ 3", "isCorrect": false},
-    {"text": "РћС‚РІРµС‚ 4", "isCorrect": false}
+    {"text": "Ответ 1", "isCorrect": true},
+    {"text": "Ответ 2", "isCorrect": false},
+    {"text": "Ответ 3", "isCorrect": false},
+    {"text": "Ответ 4", "isCorrect": false}
   ],
-  "explanation": "РљСЂР°С‚РєРѕРµ РѕР±СЉСЏСЃРЅРµРЅРёРµ РїСЂР°РІРёР»СЊРЅРѕРіРѕ РѕС‚РІРµС‚Р°"
+  "explanation": "Краткое объяснение правильного ответа"
 }
 
-Р’РµСЂРЅРё РўРћР›Р¬РљРћ JSON РјР°СЃСЃРёРІ РІРѕРїСЂРѕСЃРѕРІ, Р±РµР· РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕРіРѕ С‚РµРєСЃС‚Р°.`;
+Верни ТОЛЬКО JSON массив вопросов, без дополнительного текста.`;
 
     const aiResponse = await aiService.sendMessage(prompt, userId, 'quiz_generation');
 
@@ -173,12 +145,12 @@ export const generateQuestions = async (req, res) => {
       console.error('Error parsing AI response:', parseError);
       return res.status(500).json({
         success: false,
-        error: 'РћС€РёР±РєР° РїСЂРё РѕР±СЂР°Р±РѕС‚РєРµ РѕС‚РІРµС‚Р° РР. РџРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰С‘ СЂР°Р·.',
+        error: 'Ошибка при обработке ответа ИИ. Попробуйте ещё раз.',
       });
     }
 
-    questions = questions.map((q, index) => ({
-      ...q,
+    questions = questions.map((question, index) => ({
+      ...question,
       id: `q_${Date.now()}_${index}`,
     }));
 
@@ -192,27 +164,16 @@ export const generateQuestions = async (req, res) => {
     });
   } catch (error) {
     console.error('Error generating questions:', error);
-    res.status(500).json({
-      success: false,
-      error: 'РћС€РёР±РєР° РїСЂРё РіРµРЅРµСЂР°С†РёРё РІРѕРїСЂРѕСЃРѕРІ',
-    });
+    res.status(500).json({ success: false, error: 'Ошибка при генерации вопросов' });
   }
 };
 
 export const getQuizStats = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const stats = await QuizModel.getStats(userId);
-
-    res.json({
-      success: true,
-      data: stats,
-    });
+    const stats = await QuizModel.getStats(req.user.id);
+    res.json({ success: true, data: stats });
   } catch (error) {
     console.error('Error getting quiz stats:', error);
-    res.status(500).json({
-      success: false,
-      error: 'РћС€РёР±РєР° РїСЂРё РїРѕР»СѓС‡РµРЅРёРё СЃС‚Р°С‚РёСЃС‚РёРєРё',
-    });
+    res.status(500).json({ success: false, error: 'Ошибка при получении статистики' });
   }
 };
