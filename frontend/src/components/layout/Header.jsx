@@ -74,7 +74,7 @@ export default function Header() {
                   }`}
                 >
                   <BookOpen className="w-4 h-4" />
-                  {t.nav.tools || 'РРЅСЃС‚СЂСѓРјРµРЅС‚С‹'}
+                  {t.nav.tools || 'Инструменты'}
                   <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${toolsDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
@@ -118,7 +118,7 @@ export default function Header() {
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-default"
                     >
                       <Shuffle className="w-4 h-4 text-cyan-500" />
-                      {t.nav.groupSplitter || 'Р”РµР»РµРЅРёРµ РЅР° РіСЂСѓРїРїС‹'}
+                      {t.nav.groupSplitter || 'Деление на группы'}
                     </Link>
                     <Link
                       to="/brain-break"
@@ -224,7 +224,7 @@ export default function Header() {
                 </Link>
                 <Link to="/group-splitter" className="px-3 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-default flex items-center gap-2">
                   <Shuffle className="w-4 h-4" />
-                  {t.nav.groupSplitter || 'Р”РµР»РµРЅРёРµ РЅР° РіСЂСѓРїРїС‹'}
+                  {t.nav.groupSplitter || 'Деление на группы'}
                 </Link>
                 <Link to="/brain-break" className="px-3 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-default flex items-center gap-2">
                   <Sparkles className="w-4 h-4" />

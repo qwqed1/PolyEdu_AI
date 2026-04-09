@@ -1,9 +1,12 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import translations from '../i18n/translations';
+import { repairMojibakeDeep } from '../utils/repairMojibake';
 
 const LanguageContext = createContext();
 
 export function LanguageProvider({ children }) {
+  const normalizedTranslations = useMemo(() => repairMojibakeDeep(translations), []);
+
   const [language, setLanguage] = useState(() => {
     const saved = localStorage.getItem('language');
     return saved || 'ru';
@@ -18,7 +21,7 @@ export function LanguageProvider({ children }) {
     setLanguage(prev => prev === 'ru' ? 'kk' : 'ru');
   }, []);
 
-  const t = translations[language] || translations.ru;
+  const t = normalizedTranslations[language] || normalizedTranslations.ru;
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, toggleLanguage, t }}>

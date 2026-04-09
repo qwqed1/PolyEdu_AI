@@ -10,6 +10,7 @@ import {
   FlaskConical,
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { repairMojibakeDeep } from '../../utils/repairMojibake';
 
 const copyByLanguage = {
   ru: {
@@ -118,9 +119,11 @@ const copyByLanguage = {
   },
 };
 
+const normalizedCopyByLanguage = repairMojibakeDeep(copyByLanguage);
+
 export default function LandingPage() {
   const { language } = useLanguage();
-  const copy = copyByLanguage[language] || copyByLanguage.ru;
+  const copy = normalizedCopyByLanguage[language] || normalizedCopyByLanguage.ru;
 
   return (
     <div className="min-h-screen bg-white dark:bg-dark-bg transition-colors duration-300">
